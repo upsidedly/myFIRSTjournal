@@ -1,0 +1,8 @@
+{
+    "pages": [
+        "index",
+        "joystick-mapping",
+        "pid-control"
+    ],
+    "icon": "Gear"
+}

@@ -4,14 +4,17 @@ import getPageCardComponents from '@suin/fumadocs-page-card';
 import { source } from './lib/source';
 import { Bracket } from './components/bracket';
 import { Wordmark } from './components/wordmark';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
 // use this function to get MDX components, you will need it for rendering MDX
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
-  return {
+  return {  
     ...defaultMdxComponents,
     ...getPageCardComponents({ source }),
     Bracket,
     Wordmark,
+    Tabs,
+    Tab,
     ...components,
   };
 }

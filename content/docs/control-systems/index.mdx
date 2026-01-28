@@ -1,0 +1,73 @@
+---
+title: Introduction
+description: Master the fundamentals of robot control
+icon: BookOpen
+---
+
+## What are Control Systems?
+
+A **control system** is how your robot responds to commands and adjusts its behavior based on what's happening around it. Think of it like this: when you drive a car, you don't just turn the steering wheel once and hope for the best — you constantly make small adjustments based on where the car is going. Your robot needs to do the same thing!
+
+In FTC robotics, control systems handle everything from simple tasks like "move forward when I push the joystick" to complex operations like "keep the arm at exactly 45 degrees no matter what."
+
+## Why Control Systems Matter
+
+Without good control, even the best-built robot will:
+- Overshoot targets and miss game pieces
+- Drift off course during autonomous
+- Respond unpredictably to driver inputs
+- Waste time with imprecise movements
+
+With proper control systems, your robot becomes:
+- **Precise** — Goes exactly where you want it
+- **Responsive** — Reacts quickly to commands
+- **Stable** — Maintains position even under load
+- **Predictable** — Behaves consistently every time
+
+## Core Concepts
+
+### Open-Loop Control
+
+This is the simplest type of control: you give a command, the robot executes it, and that's it. No feedback, no adjustments.
+
+**Example:** Setting a motor to 50% power and hoping it moves the arm to the right position.
+
+**Pros:**
+- Simple to program
+- Fast execution
+- Works fine for simple tasks
+
+**Cons:**
+- No way to know if it worked
+- Affected by battery level, friction, weight
+- Inconsistent results
+
+### Closed-Loop Control (Feedback Control)
+
+This is smarter control: you give a command, the robot checks if it's doing the right thing, and adjusts automatically.
+
+**Example:** Telling the robot "go to 45 degrees," and it constantly checks its angle and corrects itself until it reaches exactly 45 degrees.
+
+**Pros:**
+- Self-correcting
+- Consistent results
+- Handles disturbances (like game pieces changing weight)
+
+**Cons:**
+- More complex to program
+- Requires sensors
+- Needs tuning to work properly
+
+## What You'll Learn
+
+In this section, we'll cover:
+
+- **Manual Control** — How to map gamepad inputs to robot actions
+- **Motor Commands** — Different ways to control motors and when to use each
+- **PID Control** — The most important feedback algorithm in FTC
+- **Motion Profiling** — Smooth, controlled movements instead of jerky stops and starts
+- **Practical Examples** — Real code you can use on your robot
+
+## Getting Started
+
+Start with manual control to understand the basics, then move on to PID control once you're comfortable with sensors and feedback loops. Don't worry if PID seems complicated at first — we'll break it down step by step!

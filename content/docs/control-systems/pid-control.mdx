@@ -1,0 +1,702 @@
+---
+title: PID Control
+description: Self-correcting robot control made simple
+icon: Target
+---
+
+## Open-Loop vs Closed-Loop Control
+
+Before diving into PID, let's understand the two fundamental types of control systems:
+
+### Open-Loop Control
+
+**Open-loop control** means you give a command and hope for the best — there's no feedback to tell you if it worked.
+
+**Example:** You tell your arm motor "run at 50% power for 2 seconds" and assume it reaches the right position.
+
+**How it works:**
+1. Set motor power
+2. Wait some time
+3. Stop motor
+4. Hope it's in the right place
+
+**Real-world analogy:** Throwing a basketball without watching where it goes. You take the shot and walk away assuming it went in.
+
+**Pros:**
+- ✅ Simple to program
+- ✅ Fast execution (no calculations needed)
+- ✅ Works fine for simple, repeatable tasks
+
+**Cons:**
+- ❌ No way to verify it worked
+- ❌ Battery voltage affects speed/power
+- ❌ Load changes (game pieces, gravity) throw it off
+- ❌ No self-correction
+- ❌ Inconsistent results
+
+### Closed-Loop Control (Feedback Control)
+
+**Closed-loop control** means you constantly measure what's happening and adjust accordingly — it's self-correcting!
+
+**Example:** You tell your arm "go to 45 degrees," it checks its current angle with a sensor, calculates how far to move, adjusts power, and keeps correcting until it reaches exactly 45°.
+
+**How it works:**
+1. Set a target (45°)
+2. Measure current position (30°)
+3. Calculate error (45° - 30° = 15°)
+4. Adjust motor power based on error
+5. Repeat steps 2-4 constantly
+
+**Real-world analogy:** Driving a car. You constantly look at the road (feedback) and adjust the steering wheel to stay in your lane. If you start drifting right, you correct left.
+
+**Pros:**
+- ✅ Self-correcting
+- ✅ Consistent results
+- ✅ Handles disturbances automatically
+- ✅ Adapts to changing conditions
+- ✅ Reaches exact targets
+
+**Cons:**
+- ❌ More complex to program
+- ❌ Requires sensors
+- ❌ Needs tuning to work properly
+- ❌ Can be unstable if tuned poorly
+
+### Which Should You Use?
+
+**Use Open-Loop when:**
+- Movement doesn't need precision (simple driving)
+- No sensors available
+- Testing basic functionality
+- Time-based actions are "good enough"
+
+**Use Closed-Loop when:**
+- Precision matters (arm positioning, autonomous driving)
+- Consistent results are critical
+- Environment changes (battery, load, friction)
+- You have sensors to measure position/speed
+
+<Callout type="info">
+**PID is a type of closed-loop control.** It uses feedback from sensors to continuously correct and reach your target precisely. That's what makes it so powerful!
+</Callout>
+
+## What is PID?
+
+**PID** stands for **P**roportional, **I**ntegral, **D**erivative. It's a feedback algorithm that helps your robot automatically reach and maintain a target position, speed, or any other measurable value.
+
+Think of PID like a smart thermostat:
+- You set a target temperature (70°F)
+- It measures the current temperature (65°F)
+- It calculates how much to heat (the error is 5°F)
+- It turns the heater on just the right amount
+- It keeps checking and adjusting until it hits 70°F
+
+Your robot does the same thing with motors, arms, and other mechanisms!
+
+## Why Use PID?
+
+Without PID, you might tell your arm "move at 50% power for 2 seconds" and hope it lands at the right angle. Problems:
+- Battery level affects speed
+- Weight of game pieces changes behavior
+- Friction varies
+- No way to correct if it overshoots
+
+With PID, you say "go to 45 degrees" and the robot figures out the rest:
+- ✅ Self-correcting
+- ✅ Consistent results
+- ✅ Handles disturbances
+- ✅ Reaches exact targets
+
+## The Three Components
+
+### P - Proportional
+
+This is the main driving force. The farther you are from the target, the harder you push.
+
+**Formula:** `P = kP × error`
+
+Where `error = target - current`
+
+**Example:** If your arm is at 10° and you want 50°:
+- Error = 50° - 10° = 40°
+- If kP = 0.05, then P = 0.05 × 40 = 2.0 (power)
+
+**Behavior:**
+- Large errors → Large power → Fast movement
+- Small errors → Small power → Gentle approach
+- At target (error = 0) → No power → Stops
+
+**Problem:** P alone often overshoots! The motor has momentum and can't stop instantly.
+
+### I - Integral
+
+This accumulates error over time to eliminate steady-state error (when you're close but not quite there).
+
+**Formula:** `I = kI × (sum of all errors)`
+
+**Example:** Your arm should be at 45° but keeps settling at 44.5° because gravity or friction:
+- Error keeps being 0.5°
+- That 0.5° adds up: 0.5, 1.0, 1.5, 2.0...
+- Eventually I builds up enough to push past the resistance
+
+**Behavior:**
+- Eliminates persistent small errors
+- Pushes through friction or load
+- Helps reach the exact target
+
+**Problem:** I can cause overshoot if too large, or make the system oscillate.
+
+### D - Derivative
+
+This predicts future error by looking at how fast the error is changing. It acts like a brake!
+
+**Formula:** `D = kD × (change in error / change in time)`
+
+**Example:** Your arm is approaching 45°, moving fast:
+- Error went from 10° to 5° in one loop
+- Change = -5° (getting closer fast!)
+- D applies counter-force to slow down
+- Prevents overshoot
+
+**Behavior:**
+- Dampens oscillation
+- Slows approach to target
+- Reduces overshoot
+- Makes system more stable
+
+**Problem:** Sensitive to noise in sensor readings.
+
+## Visualizing PID Response
+
+Understanding how P, I, and D affect your robot's behavior is crucial. Here are some excellent resources to see PID in action:
+
+<Callout title="🎮 Interactive Learning Resources">
+
+**Online Simulators:**
+- **[PID Controller Demo (YouTube)](https://www.youtube.com/results?search_query=pid+controller+simulator+demo)** - Video demonstrations of PID tuning
+- **[Desmos PID Graphing Calculator](https://www.desmos.com/calculator)** - Create custom PID response graphs
+
+**Video Tutorials:**
+- **[Control Systems Bootcamp by Steve Brunton](https://www.youtube.com/watch?v=Pi7l8mMjYVE&list=PLMrJAkhIeNNR20Mz-VpzgfQs5zrYi085m)** - Excellent series on control theory
+- **[FTC PID Tuning Videos](https://www.youtube.com/results?search_query=ftc+pid+tuning)** - FTC-specific examples
+- **[Understanding PID Control (MATLAB)](https://www.youtube.com/watch?v=wkfEZmsQqiA)** - Visual explanation series
+
+</Callout>
+
+### Response Curve Comparison
+
+Here's how different PID configurations affect an arm reaching 90 degrees:
+
+#### P-Only Control (kP = 0.05, kI = 0, kD = 0)
+
+**What happens:**
+- ⚡ Fast initial approach - motor responds aggressively to error
+- ❌ Overshoots target significantly (can reach ~110° when targeting 90°)
+- ❌ Bounces back and forth continuously
+- ❌ Never settles exactly at 90° - oscillates forever
+- 💡 **Too aggressive, no damping to slow down**
+
+**Why it happens:** The proportional term only looks at current error. As it approaches the target, momentum carries it past. Then it corrects back, overshoots again, repeat forever.
+
+#### PI Control (kP = 0.05, kI = 0.01, kD = 0)
+
+**What happens:**
+- ⚡ Fast approach with strong response
+- ❌ Still overshoots initially (reaches ~100°)
+- ⚠️ Oscillates for a bit as integral builds up
+- ✅ Eventually settles exactly at 90° with no steady-state error
+- 💡 **I term eliminates persistent error that P alone can't fix**
+
+**Why it's better:** The integral term accumulates small errors over time. If the arm settles at 89.5° due to friction/gravity, the integral grows until it pushes hard enough to reach exactly 90°.
+
+#### PID Control (kP = 0.05, kI = 0.01, kD = 0.004)
+
+**What happens:**
+- ⚡ Good speed - fast but controlled
+- ✅ Minimal overshoot (~92° max) - just barely goes past target
+- ✅ Quick settling - reaches target smoothly in ~1.2 seconds
+- ✅ Reaches and stays at exactly 90° with no drift
+- 💡 **D term dampens oscillation by predicting future error**
+
+**Why it's optimal:** The derivative term acts like a brake. As the arm approaches 90° quickly, D sees the error shrinking fast and applies counter-force to slow down, preventing overshoot.
+
+### Step-by-Step Tuning Process
+
+Here's the recommended order for tuning PID from scratch:
+
+**Step 1: Start with Zero Gains**
+- Set `kP = 0, kI = 0, kD = 0`
+- Result: Nothing happens - motor doesn't move
+- This is your baseline
+
+**Step 2: Increase P Until It Responds**
+- Set `kP = 0.02` (or higher until movement starts)
+- Result: Robot moves toward target but oscillates slowly
+- Keep increasing P until you get a reasonable response time
+
+**Step 3: Increase P for Faster Response**
+- Set `kP = 0.05` (continue increasing)
+- Result: Faster movement but more aggressive oscillation
+- Stop when oscillation becomes too wild or when response is fast enough
+- You'll likely overshoot at this point - that's normal!
+
+**Step 4: Add D to Dampen Oscillation**
+- Set `kD = 0.004` (start small)
+- Result: Oscillation reduces significantly, smoother approach
+- The D term acts like a brake, slowing down as you approach target
+- Increase D until oscillation is minimal but movement isn't too sluggish
+
+**Step 5: Add I to Eliminate Steady-State Error**
+- Set `kI = 0.01` (start very small!)
+- Result: System now reaches exact target with no drift
+- The I term fixes persistent small errors (gravity, friction)
+- Be careful - too much I causes overshoot and slow oscillation
+
+**Final Tuned Values:** `kP = 0.05, kI = 0.01, kD = 0.004` ✅
+
+### Common Tuning Problems
+
+#### Problem: Too Much P (kP too high)
+
+**Symptoms:**
+- Fast, aggressive movement that seems out of control
+- Large overshoot - goes way past the target
+- Continuous wild oscillation - bounces back and forth rapidly
+- Never settles - keeps oscillating forever
+- Makes loud buzzing sounds as motor rapidly switches direction
+
+**What's happening:** P term is too aggressive. The motor responds so strongly to any error that momentum carries it far past the target. Then it overcorrects back, creating a never-ending cycle.
+
+**Fix:** Reduce kP by 30-50% until oscillation decreases
+
+#### Problem: Too Much I (kI too high)
+
+**Symptoms:**
+- Overshoots target and stays high for a while
+- Slow, lazy oscillation - very gradual bouncing
+- Takes forever to settle (10+ seconds)
+- "Windup" - after hitting an obstacle, system goes crazy when released
+- Gets worse over time as integral accumulates
+
+**What's happening:** The integral term accumulates error too quickly, building up excessive correction force. This causes big overshoots and the system can't recover quickly.
+
+**Fix:** Reduce kI significantly (try 1/5th of current value) or add integral windup limit to cap the accumulated error
+
+#### Problem: Too Much D (kD too high)
+
+**Symptoms:**
+- Very slow, sluggish movement - feels like it's moving through mud
+- Overly cautious approach to target
+- Takes way too long to reach target (5-10+ seconds)
+- Too much "braking" - barely moves near the target
+- Seems scared to move
+
+**What's happening:** The derivative term is overcompensating, applying too much counter-force as the system moves. It's like driving with the brakes constantly engaged.
+
+**Fix:** Reduce kD by 50% or more until movement feels responsive
+
+#### Problem: Sensor Noise + High D
+
+**Symptoms:**
+- Jittery, shaky motion - especially when holding position
+- Motor keeps making small adjustments even when "stopped"
+- Rapid small movements back and forth
+- Buzzing or humming sound at rest
+- Works better when moving, worse when stationary
+
+**What's happening:** Your sensor readings have noise (small random fluctuations). The D term sees these as rapid changes in error and tries to correct them, causing jittery motion.
+
+**Fix:** 
+- Add a low-pass filter to smooth sensor readings: `filteredPosition = 0.8 * filteredPosition + 0.2 * rawPosition`
+- Reduce kD to make it less sensitive to small changes
+- Use better sensors or sensor mounting to reduce mechanical vibration
+
+### Real-World Tuning Examples
+
+**FTC Arm to 90°:**
+```java
+// Well-tuned for arm positioning
+PIDController armPID = new PIDController(
+    0.05,   // kP - proportional gain
+    0.01,   // kI - integral gain  
+    0.004   // kD - derivative gain
+);
+```
+
+**Response:**
+- Rise time: 0.8 seconds
+- Overshoot: 2%
+- Settling time: 1.2 seconds
+- Steady-state error: 0°
+
+**Poorly-tuned (P-only):**
+```java
+// Only P - will oscillate!
+PIDController armPID = new PIDController(
+    0.1,    // kP - too high!
+    0,      // kI - no integral
+    0       // kD - no damping
+);
+```
+
+**Response:**
+- Rise time: 0.3 seconds (too fast!)
+- Overshoot: 25%
+- Settling time: Never settles
+- Oscillates ±10° forever
+
+### Video Demonstrations
+
+<Callout title="📺 Watch PID in Action">
+
+**Recommended Videos:**
+- [FTC PID Tuning Tutorial](https://www.youtube.com/results?search_query=ftc+pid+tuning) - Search results for FTC-specific examples
+
+</Callout>
+
+## Basic PID Implementation
+
+Here's a simple PID controller you can use:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+public class PIDController {
+    private double kP, kI, kD;
+    private double integral = 0;
+    private double previousError = 0;
+    private double previousTime = 0;
+    
+    public PIDController(double kP, double kI, double kD) {
+        this.kP = kP;
+        this.kI = kI;
+        this.kD = kD;
+    }
+    
+    public double calculate(double target, double current) {
+        // Calculate error
+        double error = target - current;
+        
+        // Calculate time delta
+        double currentTime = System.currentTimeMillis() / 1000.0;
+        double deltaTime = currentTime - previousTime;
+        previousTime = currentTime;
+        
+        // Proportional term
+        double P = kP * error;
+        
+        // Integral term (accumulate error over time)
+        integral += error * deltaTime;
+        double I = kI * integral;
+        
+        // Derivative term (rate of change of error)
+        double derivative = (error - previousError) / deltaTime;
+        double D = kD * derivative;
+        previousError = error;
+        
+        // Combine all three
+        return P + I + D;
+    }
+    
+    public void reset() {
+        integral = 0;
+        previousError = 0;
+        previousTime = System.currentTimeMillis() / 1000.0;
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+class PIDController(
+    private val kP: Double,
+    private val kI: Double,
+    private val kD: Double
+) {
+    private var integral = 0.0
+    private var previousError = 0.0
+    private var previousTime = 0.0
+    
+    fun calculate(target: Double, current: Double): Double {
+        // Calculate error
+        val error = target - current
+        
+        // Calculate time delta
+        val currentTime = System.currentTimeMillis() / 1000.0
+        val deltaTime = currentTime - previousTime
+        previousTime = currentTime
+        
+        // Proportional term
+        val P = kP * error
+        
+        // Integral term (accumulate error over time)
+        integral += error * deltaTime
+        val I = kI * integral
+        
+        // Derivative term (rate of change of error)
+        val derivative = (error - previousError) / deltaTime
+        val D = kD * derivative
+        previousError = error
+        
+        // Combine all three
+        return P + I + D
+    }
+    
+    fun reset() {
+        integral = 0.0
+        previousError = 0.0
+        previousTime = System.currentTimeMillis() / 1000.0
+    }
+}
+```
+
+</Tab>
+</Tabs>
+
+## Using PID for an Arm
+
+Here's a complete example controlling an arm to a target angle:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+@TeleOp(name="PID Arm Control")
+public class PIDArm extends LinearOpMode {
+    private DcMotor armMotor;
+    private PIDController pid;
+    
+    // Encoder counts per degree (you'll need to calculate this)
+    private static final double COUNTS_PER_DEGREE = 28.0 * 4.0 / 360.0;
+    
+    @Override
+    public void runOpMode() {
+        armMotor = hardwareMap.get(DcMotor.class, "arm_motor");
+        armMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        armMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        
+        // Initialize PID with tuned values
+        pid = new PIDController(0.02, 0.001, 0.01);
+        
+        double targetAngle = 0.0;
+        
+        waitForStart();
+        pid.reset();
+        
+        while (opModeIsActive()) {
+            // Driver controls target angle
+            if (gamepad1.dpad_up) {
+                targetAngle = 90.0;  // High position
+            } else if (gamepad1.dpad_down) {
+                targetAngle = 0.0;   // Low position
+            } else if (gamepad1.dpad_left) {
+                targetAngle = 45.0;  // Mid position
+            }
+            
+            // Get current angle from encoder
+            double currentAngle = armMotor.getCurrentPosition() / COUNTS_PER_DEGREE;
+            
+            // Calculate power using PID
+            double power = pid.calculate(targetAngle, currentAngle);
+            
+            // Limit power to safe range
+            power = Math.max(-1.0, Math.min(1.0, power));
+            
+            armMotor.setPower(power);
+            
+            // Telemetry for debugging
+            telemetry.addData("Target", "%.1f°", targetAngle);
+            telemetry.addData("Current", "%.1f°", currentAngle);
+            telemetry.addData("Error", "%.1f°", targetAngle - currentAngle);
+            telemetry.addData("Power", "%.2f", power);
+            telemetry.update();
+        }
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+@TeleOp(name = "PID Arm Control")
+class PIDArm : LinearOpMode() {
+    private lateinit var armMotor: DcMotor
+    private lateinit var pid: PIDController
+    
+    // Encoder counts per degree (you'll need to calculate this)
+    private val COUNTS_PER_DEGREE = 28.0 * 4.0 / 360.0
+    
+    override fun runOpMode() {
+        armMotor = hardwareMap.get(DcMotor::class.java, "arm_motor")
+        armMotor.mode = DcMotor.RunMode.STOP_AND_RESET_ENCODER
+        armMotor.mode = DcMotor.RunMode.RUN_WITHOUT_ENCODER
+        
+        // Initialize PID with tuned values
+        pid = PIDController(0.02, 0.001, 0.01)
+        
+        var targetAngle = 0.0
+        
+        waitForStart()
+        pid.reset()
+        
+        while (opModeIsActive()) {
+            // Driver controls target angle
+            when {
+                gamepad1.dpad_up -> targetAngle = 90.0    // High position
+                gamepad1.dpad_down -> targetAngle = 0.0   // Low position
+                gamepad1.dpad_left -> targetAngle = 45.0  // Mid position
+            }
+            
+            // Get current angle from encoder
+            val currentAngle = armMotor.currentPosition / COUNTS_PER_DEGREE
+            
+            // Calculate power using PID
+            var power = pid.calculate(targetAngle, currentAngle)
+            
+            // Limit power to safe range
+            power = power.coerceIn(-1.0, 1.0)
+            
+            armMotor.power = power
+            
+            // Telemetry for debugging
+            telemetry.addData("Target", "%.1f°".format(targetAngle))
+            telemetry.addData("Current", "%.1f°".format(currentAngle))
+            telemetry.addData("Error", "%.1f°".format(targetAngle - currentAngle))
+            telemetry.addData("Power", "%.2f".format(power))
+            telemetry.update()
+        }
+    }
+}
+```
+
+</Tab>
+</Tabs>
+
+## Tuning Your PID
+
+This is the tricky part! You need to find the right kP, kI, and kD values for your specific robot.
+
+### Step-by-Step Tuning Process
+
+**1. Start with all zeros:**
+```java
+kP = 0.0
+kI = 0.0  
+kD = 0.0
+```
+
+**2. Increase kP:**
+- Start small (0.01) and increase gradually
+- Stop when the system reaches the target but oscillates
+- If it never reaches target, keep increasing
+- If it oscillates wildly, decrease
+
+**Good kP:** Gets close to target quickly but may oscillate slightly
+
+**3. Add kD to reduce oscillation:**
+- Start very small (0.001)
+- Increase until oscillation dampens
+- Too much D will make it sluggish
+
+**Good kD:** Reduces overshoot and oscillation
+
+**4. Add kI if needed:**
+- Only add if there's steady-state error (settles near but not at target)
+- Start extremely small (0.0001)
+- Increase slowly until it reaches exact target
+- Too much I causes overshoot
+
+**Good kI:** Eliminates small persistent errors
+
+### Tuning Tips
+
+- **Change one value at a time** — Don't adjust multiple gains at once
+- **Make small changes** — Double or halve values, don't make huge jumps
+- **Test under load** — Add weight, test with game pieces
+- **Watch for battery level** — Low battery affects behavior
+- **Use telemetry** — Plot error over time if possible
+
+### Common PID Problems
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| Doesn't reach target | kP too low | Increase kP |
+| Oscillates at target | kP too high or kD too low | Decrease kP or increase kD |
+| Overshoots badly | kD too low | Increase kD |
+| Responds slowly | kP too low or kD too high | Increase kP or decrease kD |
+| Settles near target | Needs kI | Add small kI |
+| Windup/runaway | kI too high | Decrease kI or add integral limits |
+
+## Advanced: Integral Windup Prevention
+
+When error accumulates for too long, I can grow huge and cause problems. Limit it:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// In your calculate method, after calculating integral:
+integral += error * deltaTime;
+
+// Limit integral to prevent windup
+double maxIntegral = 1.0 / kI;  // Limits I contribution to ±1.0
+integral = Math.max(-maxIntegral, Math.min(maxIntegral, integral));
+
+double I = kI * integral;
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// In your calculate method, after calculating integral:
+integral += error * deltaTime
+
+// Limit integral to prevent windup
+val maxIntegral = 1.0 / kI  // Limits I contribution to ±1.0
+integral = integral.coerceIn(-maxIntegral, maxIntegral)
+
+val I = kI * integral
+```
+
+</Tab>
+</Tabs>
+
+## When to Use PID
+
+**Great for:**
+- Arm/lift positioning
+- Maintaining robot heading
+- Drive-to-distance
+- Turning to angle
+- Maintaining shooter speed
+
+**Not needed for:**
+- Simple open-loop driving
+- One-time movements without precision
+- Systems without sensors
+
+## Practice Challenge
+
+Try implementing PID for these tasks:
+1. ✅ Hold your arm at a specific angle
+2. ✅ Drive straight using gyro feedback
+3. ✅ Turn to a precise heading
+4. ✅ Maintain flywheel at constant RPM
+
+## Additional Resources
+
+For a deeper dive into control theory and advanced control systems for FTC:
+
+- **[Ctrl Alt FTC](https://www.ctrlaltftc.com/)** — Comprehensive guide covering PID, feedforward, motion profiling, and advanced control theory concepts with detailed explanations and examples
+
+## Next Steps
+
+Once you master basic PID, explore:
+- **Feedforward** — Adding predictive control for better performance
+- **Motion Profiling** — Smooth acceleration/deceleration curves
+- **Cascading PID** — Using multiple PID loops together

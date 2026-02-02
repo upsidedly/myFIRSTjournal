@@ -381,6 +381,12 @@ public class PIDController {
         // Calculate time delta
         double currentTime = System.currentTimeMillis() / 1000.0;
         double deltaTime = currentTime - previousTime;
+        
+        // Guard against first call and zero/negative deltaTime
+        if (previousTime == 0.0 || deltaTime <= 0.0) {
+            deltaTime = 1e-3;  // Small positive epsilon
+        }
+        
         previousTime = currentTime;
         
         // Proportional term
@@ -391,7 +397,10 @@ public class PIDController {
         double I = kI * integral;
         
         // Derivative term (rate of change of error)
-        double derivative = (error - previousError) / deltaTime;
+        double derivative = 0.0;
+        if (previousTime != currentTime) {  // Skip derivative on first call
+            derivative = (error - previousError) / deltaTime;
+        }
         double D = kD * derivative;
         previousError = error;
         
@@ -426,7 +435,13 @@ class PIDController(
         
         // Calculate time delta
         val currentTime = System.currentTimeMillis() / 1000.0
-        val deltaTime = currentTime - previousTime
+        var deltaTime = currentTime - previousTime
+        
+        // Guard against first call and zero/negative deltaTime
+        if (previousTime == 0.0 || deltaTime <= 0.0) {
+            deltaTime = 1e-3  // Small positive epsilon
+        }
+        
         previousTime = currentTime
         
         // Proportional term
@@ -437,7 +452,10 @@ class PIDController(
         val I = kI * integral
         
         // Derivative term (rate of change of error)
-        val derivative = (error - previousError) / deltaTime
+        var derivative = 0.0
+        if (previousTime != currentTime) {  // Skip derivative on first call
+            derivative = (error - previousError) / deltaTime
+        }
         val D = kD * derivative
         previousError = error
         
@@ -642,9 +660,11 @@ When error accumulates for too long, I can grow huge and cause problems. Limit i
 // In your calculate method, after calculating integral:
 integral += error * deltaTime;
 
-// Limit integral to prevent windup
-double maxIntegral = 1.0 / kI;  // Limits I contribution to ±1.0
-integral = Math.max(-maxIntegral, Math.min(maxIntegral, integral));
+// Limit integral to prevent windup (only if kI is non-zero)
+if (kI > 0) {
+    double maxIntegral = 1.0 / kI;  // Limits I contribution to ±1.0
+    integral = Math.max(-maxIntegral, Math.min(maxIntegral, integral));
+}
 
 double I = kI * integral;
 ```
@@ -656,9 +676,11 @@ double I = kI * integral;
 // In your calculate method, after calculating integral:
 integral += error * deltaTime
 
-// Limit integral to prevent windup
-val maxIntegral = 1.0 / kI  // Limits I contribution to ±1.0
-integral = integral.coerceIn(-maxIntegral, maxIntegral)
+// Limit integral to prevent windup (only if kI is non-zero)
+if (kI > 0) {
+    val maxIntegral = 1.0 / kI  // Limits I contribution to ±1.0
+    integral = integral.coerceIn(-maxIntegral, maxIntegral)
+}
 
 val I = kI * integral
 ```

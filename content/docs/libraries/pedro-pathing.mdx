@@ -1,0 +1,656 @@
+---
+title: Pedro Pathing
+description: Modern path following system with smooth trajectories
+icon: Navigation
+---
+
+## What is Pedro Pathing?
+
+**Pedro Pathing** is a modern path following library for FTC robots. It's designed to be easier to use than Road Runner while still providing smooth, accurate autonomous movements with Bézier curves and pure pursuit path following.
+
+Named after Pedro, it focuses on simplicity and performance — getting your robot moving autonomously with minimal setup.
+
+## Why Use Pedro Pathing?
+
+**Easier Than Road Runner:**
+- Simpler setup process
+- Less tuning required
+- Faster to get working
+- Great for new teams
+
+**Smooth Paths:**
+- Follows curved trajectories naturally
+- Avoids jerky movements
+- Looks professional during matches
+- Better for game piece manipulation
+
+**Modern Features:**
+- Real-time path visualization
+- Support for holonomic and tank drives
+- Built-in localization
+- Works with IMU and odometry pods
+
+## Installation
+
+### Step 1: Add JitPack Repository
+
+In your `build.gradle` (Project level):
+
+```groovy
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+### Step 2: Add Dependency
+
+In your `build.gradle` (Module: TeamCode):
+
+```groovy
+dependencies {
+    implementation 'com.github.pedro-path:pedro-path:1.0.0'
+    // Check GitHub for latest version
+}
+```
+
+### Step 3: Sync Project
+
+Click "Sync Now" in Android Studio.
+
+## Quick Start Guide
+
+### 1. Set Up Your Robot Configuration
+
+Create a robot configuration with your motors and sensors:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+import org.pedropathing.follower.Follower;
+import org.pedropathing.localization.Pose;
+import org.pedropathing.pathgen.PathBuilder;
+import org.pedropathing.pathgen.Path;
+
+@Autonomous(name = "Pedro Example")
+public class PedroAuto extends LinearOpMode {
+    private Follower follower;
+    
+    @Override
+    public void runOpMode() {
+        // Initialize follower with your drive motors
+        follower = new Follower(hardwareMap);
+        
+        // Set starting position (x, y, heading in radians)
+        follower.setStartingPose(new Pose(0, 0, 0));
+        
+        waitForStart();
+        
+        // Follow paths here
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+import org.pedropathing.follower.Follower
+import org.pedropathing.localization.Pose
+import org.pedropathing.pathgen.PathBuilder
+import org.pedropathing.pathgen.Path
+
+@Autonomous(name = "Pedro Example")
+class PedroAuto : LinearOpMode() {
+    private lateinit var follower: Follower
+    
+    override fun runOpMode() {
+        // Initialize follower with your drive motors
+        follower = Follower(hardwareMap)
+        
+        // Set starting position (x, y, heading in radians)
+        follower.setStartingPose(Pose(0.0, 0.0, 0.0))
+        
+        waitForStart()
+        
+        // Follow paths here
+    }
+}
+```
+
+</Tab>
+</Tabs>
+
+### 2. Create a Simple Path
+
+Build a path using the PathBuilder:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// Create a path to drive forward 40 inches
+Path path = new PathBuilder()
+    .addLine(new Pose(0, 0, 0), new Pose(40, 0, 0))
+    .build();
+
+// Follow the path
+follower.followPath(path);
+
+// Wait until path is complete
+while (opModeIsActive() && follower.isBusy()) {
+    follower.update();
+    telemetry.addData("X", follower.getPose().getX());
+    telemetry.addData("Y", follower.getPose().getY());
+    telemetry.update();
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// Create a path to drive forward 40 inches
+val path = PathBuilder()
+    .addLine(Pose(0.0, 0.0, 0.0), Pose(40.0, 0.0, 0.0))
+    .build()
+
+// Follow the path
+follower.followPath(path)
+
+// Wait until path is complete
+while (opModeIsActive() && follower.isBusy()) {
+    follower.update()
+    telemetry.addData("X", follower.pose.x)
+    telemetry.addData("Y", follower.pose.y)
+    telemetry.update()
+}
+```
+
+</Tab>
+</Tabs>
+
+## Path Building
+
+### Straight Lines
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+Path straightPath = new PathBuilder()
+    .addLine(new Pose(0, 0, 0), new Pose(40, 0, 0))  // Drive forward
+    .addLine(new Pose(40, 0, 0), new Pose(40, 30, 0))  // Strafe right
+    .build();
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+val straightPath = PathBuilder()
+    .addLine(Pose(0.0, 0.0, 0.0), Pose(40.0, 0.0, 0.0))  // Drive forward
+    .addLine(Pose(40.0, 0.0, 0.0), Pose(40.0, 30.0, 0.0))  // Strafe right
+    .build()
+```
+
+</Tab>
+</Tabs>
+
+### Curved Paths (Bézier Curves)
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+Path curvedPath = new PathBuilder()
+    .addBezierCurve(
+        new Pose(0, 0, 0),           // Start point
+        new Pose(20, 20, 0),         // Control point 1
+        new Pose(40, 20, 0),         // Control point 2
+        new Pose(60, 0, 0)           // End point
+    )
+    .build();
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+val curvedPath = PathBuilder()
+    .addBezierCurve(
+        Pose(0.0, 0.0, 0.0),           // Start point
+        Pose(20.0, 20.0, 0.0),         // Control point 1
+        Pose(40.0, 20.0, 0.0),         // Control point 2
+        Pose(60.0, 0.0, 0.0)           // End point
+    )
+    .build()
+```
+
+</Tab>
+</Tabs>
+
+### Sequential Paths
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// Create multiple paths for a full autonomous routine
+Path path1 = new PathBuilder()
+    .addLine(new Pose(0, 0, 0), new Pose(40, 0, 0))
+    .build();
+
+Path path2 = new PathBuilder()
+    .addLine(new Pose(40, 0, 0), new Pose(40, 30, 0))
+    .build();
+
+follower.followPath(path1);
+while (opModeIsActive() && follower.isBusy()) {
+    follower.update();
+}
+
+follower.followPath(path2);
+while (opModeIsActive() && follower.isBusy()) {
+    follower.update();
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// Create multiple paths for a full autonomous routine
+val path1 = PathBuilder()
+    .addLine(Pose(0.0, 0.0, 0.0), Pose(40.0, 0.0, 0.0))
+    .build()
+
+val path2 = PathBuilder()
+    .addLine(Pose(40.0, 0.0, 0.0), Pose(40.0, 30.0, 0.0))
+    .build()
+
+follower.followPath(path1)
+while (opModeIsActive() && follower.isBusy()) {
+    follower.update()
+}
+
+follower.followPath(path2)
+while (opModeIsActive() && follower.isBusy()) {
+    follower.update()
+}
+```
+
+</Tab>
+</Tabs>
+
+### Paths with Heading Control
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// Turn while moving
+Path turnPath = new PathBuilder()
+    .addLine(
+        new Pose(0, 0, 0),              // Start facing forward
+        new Pose(40, 0, Math.PI / 2)    // End facing right (90°)
+    )
+    .build();
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// Turn while moving
+val turnPath = PathBuilder()
+    .addLine(
+        Pose(0.0, 0.0, 0.0),              // Start facing forward
+        Pose(40.0, 0.0, Math.PI / 2)      // End facing right (90°)
+    )
+    .build()
+```
+
+</Tab>
+</Tabs>
+
+## Complete Autonomous Example
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+@Autonomous(name = "Pedro Full Auto")
+public class PedroFullAuto extends LinearOpMode {
+    private Follower follower;
+    private DcMotor armMotor;
+    private Servo claw;
+    
+    @Override
+    public void runOpMode() {
+        // Initialize Pedro Pathing
+        follower = new Follower(hardwareMap);
+        follower.setStartingPose(new Pose(-36, -60, Math.toRadians(90)));
+        
+        // Initialize other hardware
+        armMotor = hardwareMap.get(DcMotor.class, "arm");
+        claw = hardwareMap.get(Servo.class, "claw");
+        
+        // Build paths
+        Path toBasket = new PathBuilder()
+            .addBezierCurve(
+                new Pose(-36, -60, Math.toRadians(90)),
+                new Pose(-24, -48, Math.toRadians(45)),
+                new Pose(-12, -12, Math.toRadians(45))
+            )
+            .build();
+        
+        Path toSamples = new PathBuilder()
+            .addLine(
+                new Pose(-12, -12, Math.toRadians(45)),
+                new Pose(-48, -48, Math.toRadians(0))
+            )
+            .build();
+        
+        waitForStart();
+        
+        if (opModeIsActive()) {
+            // Score pre-load
+            raiseArm();
+            follower.followPath(toBasket);
+            waitForPath();
+            
+            releaseGamePiece();
+            lowerArm();
+            
+            // Get samples
+            follower.followPath(toSamples);
+            waitForPath();
+            
+            grabGamePiece();
+            
+            // Return to basket
+            follower.followPath(toBasket);
+            waitForPath();
+            
+            releaseGamePiece();
+        }
+    }
+    
+    private void waitForPath() {
+        while (opModeIsActive() && follower.isBusy()) {
+            follower.update();
+            
+            // Show position for debugging
+            telemetry.addData("X", follower.getPose().getX());
+            telemetry.addData("Y", follower.getPose().getY());
+            telemetry.addData("Heading", Math.toDegrees(follower.getPose().getHeading()));
+            telemetry.update();
+        }
+    }
+    
+    private void raiseArm() {
+        armMotor.setTargetPosition(1000);
+        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        armMotor.setPower(0.8);
+        sleep(500);
+    }
+    
+    private void lowerArm() {
+        armMotor.setTargetPosition(0);
+        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        armMotor.setPower(0.8);
+        sleep(500);
+    }
+    
+    private void grabGamePiece() {
+        claw.setPosition(1.0);
+        sleep(300);
+    }
+    
+    private void releaseGamePiece() {
+        claw.setPosition(0.0);
+        sleep(300);
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+@Autonomous(name = "Pedro Full Auto")
+class PedroFullAuto : LinearOpMode() {
+    private lateinit var follower: Follower
+    private lateinit var armMotor: DcMotor
+    private lateinit var claw: Servo
+    
+    override fun runOpMode() {
+        // Initialize Pedro Pathing
+        follower = Follower(hardwareMap)
+        follower.setStartingPose(Pose(-36.0, -60.0, Math.toRadians(90.0)))
+        
+        // Initialize other hardware
+        armMotor = hardwareMap.get(DcMotor::class.java, "arm")
+        claw = hardwareMap.get(Servo::class.java, "claw")
+        
+        // Build paths
+        val toBasket = PathBuilder()
+            .addBezierCurve(
+                Pose(-36.0, -60.0, Math.toRadians(90.0)),
+                Pose(-24.0, -48.0, Math.toRadians(45.0)),
+                Pose(-12.0, -12.0, Math.toRadians(45.0))
+            )
+            .build()
+        
+        val toSamples = PathBuilder()
+            .addLine(
+                Pose(-12.0, -12.0, Math.toRadians(45.0)),
+                Pose(-48.0, -48.0, Math.toRadians(0.0))
+            )
+            .build()
+        
+        waitForStart()
+        
+        if (opModeIsActive()) {
+            // Score pre-load
+            raiseArm()
+            follower.followPath(toBasket)
+            waitForPath()
+            
+            releaseGamePiece()
+            lowerArm()
+            
+            // Get samples
+            follower.followPath(toSamples)
+            waitForPath()
+            
+            grabGamePiece()
+            
+            // Return to basket
+            follower.followPath(toBasket)
+            waitForPath()
+            
+            releaseGamePiece()
+        }
+    }
+    
+    private fun waitForPath() {
+        while (opModeIsActive() && follower.isBusy()) {
+            follower.update()
+            
+            // Show position for debugging
+            telemetry.addData("X", follower.pose.x)
+            telemetry.addData("Y", follower.pose.y)
+            telemetry.addData("Heading", Math.toDegrees(follower.pose.heading))
+            telemetry.update()
+        }
+    }
+    
+    private fun raiseArm() {
+        armMotor.targetPosition = 1000
+        armMotor.mode = DcMotor.RunMode.RUN_TO_POSITION
+        armMotor.power = 0.8
+        sleep(500)
+    }
+    
+    private fun lowerArm() {
+        armMotor.targetPosition = 0
+        armMotor.mode = DcMotor.RunMode.RUN_TO_POSITION
+        armMotor.power = 0.8
+        sleep(500)
+    }
+    
+    private fun grabGamePiece() {
+        claw.position = 1.0
+        sleep(300)
+    }
+    
+    private fun releaseGamePiece() {
+        claw.position = 0.0
+        sleep(300)
+    }
+}
+```
+
+</Tab>
+</Tabs>
+
+## Tuning Your Robot
+
+Pedro Pathing requires minimal tuning compared to Road Runner:
+
+### 1. Set Drive Constants
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// In your Follower initialization
+follower.setMaxPower(0.8);              // Max drive power (0-1)
+follower.setTranslationalCorrection(0.1); // How aggressively to correct position errors
+follower.setHeadingCorrection(0.1);      // How aggressively to correct heading errors
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// In your Follower initialization
+follower.setMaxPower(0.8)              // Max drive power (0-1)
+follower.setTranslationalCorrection(0.1) // How aggressively to correct position errors
+follower.setHeadingCorrection(0.1)      // How aggressively to correct heading errors
+```
+
+</Tab>
+</Tabs>
+
+### 2. Test and Adjust
+
+- Run simple paths and observe behavior
+- Increase correction if robot is off-target
+- Decrease correction if robot oscillates
+- Adjust max power for speed vs. accuracy
+
+## Localization
+
+Pedro Pathing supports multiple localization methods:
+
+### IMU Only (Simpler)
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// Uses drive encoders + IMU for heading
+follower.setLocalizationMode(Follower.LocalizationMode.IMU);
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// Uses drive encoders + IMU for heading
+follower.setLocalizationMode(Follower.LocalizationMode.IMU)
+```
+
+</Tab>
+</Tabs>
+
+### Three-Wheel Odometry (More Accurate)
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// Requires odometry pods
+follower.setLocalizationMode(Follower.LocalizationMode.THREE_WHEEL);
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// Requires odometry pods
+follower.setLocalizationMode(Follower.LocalizationMode.THREE_WHEEL)
+```
+
+</Tab>
+</Tabs>
+
+## Pros and Cons
+
+**Advantages:**
+- ✅ Much easier to set up than Road Runner
+- ✅ Less tuning required
+- ✅ Smooth curved paths
+- ✅ Good for beginners
+- ✅ Active development and support
+- ✅ Works well for most FTC needs
+
+**Disadvantages:**
+- ❌ Newer library (less battle-tested)
+- ❌ Smaller community than Road Runner
+- ❌ May not be as optimized for very high speeds
+- ❌ Less advanced features than Road Runner
+
+## When to Use Pedro Pathing
+
+**Great for:**
+- First-year teams learning autonomous
+- Teams that struggled with Road Runner
+- Robots that don't need extreme speed
+- Quick autonomous development
+
+**Consider Road Runner if:**
+- You need maximum speed optimization
+- Your team already knows Road Runner
+- You want the most mature solution
+
+## Tips for Success
+
+1. **Start Simple:** Test with straight lines before curves
+2. **Visualize:** Use telemetry to confirm positions
+3. **Iterate:** Build paths incrementally
+4. **Document:** Save working coordinates for future seasons
+5. **Combine:** Use Pedro for driving, PID for mechanisms
+
+## Resources
+
+- **GitHub:** [Pedro Pathing Repository](https://github.com/pedro-path/pedro-path)
+- **Documentation:** Check the GitHub wiki
+- **Examples:** Sample OpModes in the repository
+- **Discord:** FTC Discord communities
+
+## Next Steps
+
+1. Install Pedro Pathing in your project
+2. Create a simple path following OpMode
+3. Test basic movements (forward, strafe, turn)
+4. Build a complete autonomous routine
+5. Tune parameters for your robot
+6. Integrate with your existing code!

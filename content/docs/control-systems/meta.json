@@ -2,7 +2,10 @@
     "pages": [
         "index",
         "joystick-mapping",
-        "pid-control"
+        "pid-control",
+        "motion-profiling",
+        "kalman-filter",
+        "lowpass-filter"
     ],
     "icon": "Gear"
 }

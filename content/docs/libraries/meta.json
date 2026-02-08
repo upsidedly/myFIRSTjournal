@@ -4,6 +4,9 @@
         "index",
         "nextftc",
         "pedro-pathing",
-        "ftc-dashboard"
+        "ftc-dashboard",
+        "mercurial",
+        "panels",
+        "sloth"
     ]
 }

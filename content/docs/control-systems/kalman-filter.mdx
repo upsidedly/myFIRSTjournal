@@ -1,0 +1,427 @@
+---
+title: Kalman Filter
+description: Reduce sensor noise and improve accuracy with Kalman filtering
+icon: Filter
+---
+
+## What is a Kalman Filter?
+
+A **Kalman filter** is a mathematical algorithm that combines noisy sensor measurements with predictions to produce more accurate estimates. It's widely used in robotics, navigation systems, and autonomous vehicles to smooth out sensor data and reject noise.
+
+Think of it like this: if you're reading a position sensor that jumps around (50, 48, 52, 49, 51), the Kalman filter can smooth this out to give you a more stable reading (49.8, 49.9, 50.0, 50.1).
+
+## Why Use a Kalman Filter in FTC?
+
+**Common Problems:**
+- IMU readings drift over time
+- Encoders have noise from vibrations
+- Distance sensors give inconsistent readings
+- Vision processing has measurement uncertainty
+
+**Kalman Filter Benefits:**
+- Smooths noisy sensor data
+- Combines multiple sensors (sensor fusion)
+- Predicts future states
+- Adapts to changing conditions
+- Proven mathematical foundation
+
+## How It Works
+
+The Kalman filter operates in two steps that repeat continuously:
+
+### 1. Prediction Step
+Uses your robot's motion model to predict where it should be:
+```
+Predicted Position = Previous Position + (Velocity × Time)
+```
+
+### 2. Update Step
+Combines the prediction with new sensor measurements:
+```
+New Estimate = Prediction + Kalman Gain × (Measurement - Prediction)
+```
+
+The **Kalman Gain** automatically balances:
+- How much to trust the prediction (process noise)
+- How much to trust the sensor (measurement noise)
+
+### Visual Example
+
+Without Kalman Filter:
+```
+Sensor:  [50, 48, 52, 49, 51, 47, 53, 50]  ← Noisy!
+```
+
+With Kalman Filter:
+```
+Output:  [49.8, 49.9, 50.0, 50.1, 50.1, 50.0, 50.2, 50.1]  ← Smooth!
+```
+
+## Basic Implementation
+
+### Simple 1D Kalman Filter
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+public class SimpleKalmanFilter {
+    private double estimate;      // Current estimate
+    private double errorCovariance;  // Uncertainty in estimate
+    
+    private double processNoise;     // Q - How much we trust prediction
+    private double measurementNoise; // R - How much we trust sensor
+    
+    public SimpleKalmanFilter(double processNoise, double measurementNoise) {
+        this.processNoise = processNoise;
+        this.measurementNoise = measurementNoise;
+        this.estimate = 0;
+        this.errorCovariance = 1;
+    }
+    
+    public double update(double measurement) {
+        // Prediction step (we assume no change)
+        double predictedEstimate = estimate;
+        double predictedError = errorCovariance + processNoise;
+        
+        // Update step
+        double kalmanGain = predictedError / (predictedError + measurementNoise);
+        estimate = predictedEstimate + kalmanGain * (measurement - predictedEstimate);
+        errorCovariance = (1 - kalmanGain) * predictedError;
+        
+        return estimate;
+    }
+    
+    public double getEstimate() {
+        return estimate;
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+class SimpleKalmanFilter(
+    private val processNoise: Double,      // Q - How much we trust prediction
+    private val measurementNoise: Double   // R - How much we trust sensor
+) {
+    private var estimate: Double = 0.0
+    private var errorCovariance: Double = 1.0
+    
+    fun update(measurement: Double): Double {
+        // Prediction step (we assume no change)
+        val predictedEstimate = estimate
+        val predictedError = errorCovariance + processNoise
+        
+        // Update step
+        val kalmanGain = predictedError / (predictedError + measurementNoise)
+        estimate = predictedEstimate + kalmanGain * (measurement - predictedEstimate)
+        errorCovariance = (1 - kalmanGain) * predictedError
+        
+        return estimate
+    }
+    
+    fun getEstimate(): Double = estimate
+}
+```
+
+</Tab>
+</Tabs>
+
+### Using the Filter
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+@TeleOp(name = "Kalman Filter Example")
+public class KalmanExample extends LinearOpMode {
+    private SimpleKalmanFilter filter;
+    private DcMotor motor;
+    
+    @Override
+    public void runOpMode() {
+        motor = hardwareMap.get(DcMotor.class, "motor");
+        
+        // Lower process noise = trust prediction more
+        // Lower measurement noise = trust sensor more
+        filter = new SimpleKalmanFilter(0.01, 0.1);
+        
+        waitForStart();
+        
+        while (opModeIsActive()) {
+            // Get noisy encoder reading
+            int rawPosition = motor.getCurrentPosition();
+            
+            // Filter it
+            double filteredPosition = filter.update(rawPosition);
+            
+            telemetry.addData("Raw Position", rawPosition);
+            telemetry.addData("Filtered Position", "%.1f", filteredPosition);
+            telemetry.update();
+        }
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+@TeleOp(name = "Kalman Filter Example")
+class KalmanExample : LinearOpMode() {
+    private lateinit var filter: SimpleKalmanFilter
+    private lateinit var motor: DcMotor
+    
+    override fun runOpMode() {
+        motor = hardwareMap.get(DcMotor::class.java, "motor")
+        
+        // Lower process noise = trust prediction more
+        // Lower measurement noise = trust sensor more
+        filter = SimpleKalmanFilter(0.01, 0.1)
+        
+        waitForStart()
+        
+        while (opModeIsActive()) {
+            // Get noisy encoder reading
+            val rawPosition = motor.currentPosition
+            
+            // Filter it
+            val filteredPosition = filter.update(rawPosition.toDouble())
+            
+            telemetry.addData("Raw Position", rawPosition)
+            telemetry.addData("Filtered Position", "%.1f", filteredPosition)
+            telemetry.update()
+        }
+    }
+}
+```
+
+</Tab>
+</Tabs>
+
+## Tuning the Filter
+
+### Process Noise (Q)
+**What it represents:** Uncertainty in your prediction model
+
+- **High value (0.5-1.0):** "I don't trust my predictions"
+  - Filter responds quickly to changes
+  - Less smoothing
+  - Good when robot motion is unpredictable
+  
+- **Low value (0.001-0.01):** "I trust my predictions"
+  - Filter responds slowly
+  - More smoothing
+  - Good when robot motion is predictable
+
+### Measurement Noise (R)
+**What it represents:** Uncertainty in your sensor
+
+- **High value (0.5-1.0):** "I don't trust my sensor"
+  - Filter smooths more aggressively
+  - Slower response to actual changes
+  - Good for very noisy sensors
+  
+- **Low value (0.001-0.01):** "I trust my sensor"
+  - Filter follows measurements closely
+  - Less smoothing
+  - Good for accurate sensors
+
+### Finding Good Values
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// Start with these ratios and adjust:
+
+// Very noisy sensor (cheap distance sensor)
+filter = new SimpleKalmanFilter(0.01, 1.0);
+
+// Moderately noisy (encoders)
+filter = new SimpleKalmanFilter(0.01, 0.1);
+
+// Clean sensor (good IMU)
+filter = new SimpleKalmanFilter(0.1, 0.01);
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// Start with these ratios and adjust:
+
+// Very noisy sensor (cheap distance sensor)
+val filter = SimpleKalmanFilter(0.01, 1.0)
+
+// Moderately noisy (encoders)
+val filter = SimpleKalmanFilter(0.01, 0.1)
+
+// Clean sensor (good IMU)
+val filter = SimpleKalmanFilter(0.1, 0.01)
+```
+
+</Tab>
+</Tabs>
+
+## Using NextControl's Kalman Filter
+
+NextControl provides a built-in Kalman filter:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+// In NextControl
+ControlSystem controller = ControlSystemKt.controlSystem(builder -> {
+    builder.feedback(fb -> fb.pid(0.05, 0.01, 0.004));
+    builder.posFilter(filter -> filter.kalman(0.01, 0.1));
+    return null;
+});
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+// In NextControl
+val controller = controlSystem {
+    posPid(0.05, 0.01, 0.004)
+    posKalman(0.01, 0.1)  // Process noise, measurement noise
+}
+```
+
+</Tab>
+</Tabs>
+
+## Real-World Example: IMU Filtering
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+
+```java
+@TeleOp(name = "IMU Kalman Filter")
+public class IMUKalmanExample extends LinearOpMode {
+    private IMU imu;
+    private SimpleKalmanFilter headingFilter;
+    
+    @Override
+    public void runOpMode() {
+        imu = hardwareMap.get(IMU.class, "imu");
+        IMU.Parameters parameters = new IMU.Parameters(
+            new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+            )
+        );
+        imu.initialize(parameters);
+        
+        // IMU is pretty accurate, so low measurement noise
+        headingFilter = new SimpleKalmanFilter(0.1, 0.01);
+        
+        waitForStart();
+        
+        while (opModeIsActive()) {
+            // Get raw heading
+            double rawHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
+            
+            // Filter it
+            double filteredHeading = headingFilter.update(rawHeading);
+            
+            telemetry.addData("Raw Heading", "%.2f°", rawHeading);
+            telemetry.addData("Filtered Heading", "%.2f°", filteredHeading);
+            telemetry.update();
+        }
+    }
+}
+```
+
+</Tab>
+<Tab value="Kotlin">
+
+```kotlin
+@TeleOp(name = "IMU Kalman Filter")
+class IMUKalmanExample : LinearOpMode() {
+    private lateinit var imu: IMU
+    private lateinit var headingFilter: SimpleKalmanFilter
+    
+    override fun runOpMode() {
+        imu = hardwareMap.get(IMU::class.java, "imu")
+        val parameters = IMU.Parameters(
+            RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+            )
+        )
+        imu.initialize(parameters)
+        
+        // IMU is pretty accurate, so low measurement noise
+        headingFilter = SimpleKalmanFilter(0.1, 0.01)
+        
+        waitForStart()
+        
+        while (opModeIsActive()) {
+            // Get raw heading
+            val rawHeading = imu.robotYawPitchRollAngles.getYaw(AngleUnit.DEGREES)
+            
+            // Filter it
+            val filteredHeading = headingFilter.update(rawHeading)
+            
+            telemetry.addData("Raw Heading", "%.2f°", rawHeading)
+            telemetry.addData("Filtered Heading", "%.2f°", filteredHeading)
+            telemetry.update()
+        }
+    }
+}
+```
+
+</Tab>
+</Tabs>
+
+## When to Use vs. Not Use
+
+**Use Kalman Filter when:**
+- Sensor readings are noisy but generally accurate
+- You have a good prediction model
+- You need smooth, stable readings
+- Combining multiple sensors (sensor fusion)
+
+**Don't use Kalman Filter when:**
+- Sensor has systematic bias (use calibration instead)
+- Need instant response to changes (use raw data)
+- Sensor already has clean readings
+- You don't understand the noise characteristics
+
+## Comparison with Other Filters
+
+| Filter Type | Pros | Cons | Best For |
+|-------------|------|------|----------|
+| **Kalman** | Optimal for Gaussian noise, adapts to changes | More complex, needs tuning | General purpose, sensor fusion |
+| **Low-Pass** | Simple, easy to tune | Fixed lag, not adaptive | Quick smoothing, simple cases |
+| **Moving Average** | Very simple | Fixed window, lags | Basic smoothing |
+| **Complementary** | Great for combining sensors | Requires two sensors | IMU + encoder fusion |
+
+## Tips for Success
+
+1. **Start Simple:** Begin with the 1D filter, then expand
+2. **Log Data:** Record raw vs. filtered to visualize improvement
+3. **Tune Iteratively:** Adjust one noise parameter at a time
+4. **Test in Motion:** Filters behave differently when robot is moving
+5. **Know Your Sensor:** Understand what kind of noise you're dealing with
+
+## Resources
+
+- **CTRL ALT FTC:** [Control theory guide](https://www.ctrlaltftc.com/)
+- **Wikipedia:** [Kalman Filter](https://en.wikipedia.org/wiki/Kalman_filter)
+- **Video:** Search "Kalman Filter Explained" on YouTube
+
+## Next Steps
+
+1. Implement the simple 1D filter
+2. Test with encoder data
+3. Compare raw vs. filtered readings
+4. Try different noise values
+5. Expand to 2D for position tracking
+6. Explore sensor fusion (IMU + encoders)

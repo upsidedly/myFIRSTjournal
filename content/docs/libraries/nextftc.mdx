@@ -9,7 +9,7 @@ icon: Code
 **NextFTC** is a collection of powerful libraries designed to make FTC programming easier and more organized. It includes:
 
 - **NextFTC Core** - Command-based framework with commands, subsystems, and components
-- **NextControl** - Advanced control systems (PID, feedforward, Kalman filters, motion profiling)
+- **NextControl** - Advanced control systems (PID, feedforward, Bang-Bang)
 - **NextBindings** - Gamepad integration with button bindings and edge detection
 - **Hardware Module** - Built-in commands for motors, servos, and drivetrains
 - **Extensions** - Integration with Pedro Pathing and Road Runner
@@ -26,8 +26,7 @@ Think of it like having a professional toolkit instead of starting from scratch 
 
 **Advanced Control:**
 - Built-in PID, feedforward, and Bang-Bang controllers
-- Kalman filters for sensor noise reduction
-- Motion profiling for smooth movements
+- Clean API for control systems
 - Everything integrates seamlessly
 
 **Better Gamepad Handling:**
@@ -559,7 +558,7 @@ override fun onStop() {
 
 ## NextControl - Control Systems
 
-NextControl uses a builder pattern with four elements: feedback, feedforward, filter, and interpolator.
+NextControl provides a clean API for control systems with feedback and feedforward elements.
 
 ### PID Control
 
@@ -616,48 +615,6 @@ armController.goal = KineticState(1000.0)
 </Tab>
 </Tabs>
 
-### Motion Profiling
-
-<Tabs items={['Java', 'Kotlin']}>
-<Tab value="Java">
-
-```java
-// Add trapezoidal motion profiling
-ControlSystem profiledArm = ControlSystemKt.controlSystem(builder -> {
-    builder.feedback(fb -> fb.pid(0.05, 0.01, 0.004));
-    builder.interpolator(interp -> interp.trapezoidal(
-        1000.0,  // Max velocity
-        500.0    // Max acceleration
-    ));
-    return null;
-});
-
-// Use the same way - profiling happens automatically
-profiledArm.setReference(2000.0);
-double power = profiledArm.calculate(currentState);
-```
-
-</Tab>
-<Tab value="Kotlin">
-
-```kotlin
-// Add trapezoidal motion profiling
-val profiledArm = controlSystem {
-    posPid(0.05, 0.01, 0.004)
-    trapezoidal(
-        maxVelocity = 1000.0,
-        maxAcceleration = 500.0
-    )
-}
-
-// Use the same way - profiling happens automatically
-profiledArm.goal = KineticState(2000.0)
-val power = profiledArm.calculate(currentState)
-```
-
-</Tab>
-</Tabs>
-
 ### Feedforward Control
 
 <Tabs items={['Java', 'Kotlin']}>
@@ -693,34 +650,6 @@ val armWithFF = controlSystem {
 val elevatorWithFF = controlSystem {
     posPid(0.05, 0.01, 0.004)
     elevatorFF(0.1, 0.3, 0.01, 0.001)  // kS, kG, kV, kA
-}
-```
-
-</Tab>
-</Tabs>
-
-### Kalman Filters
-
-<Tabs items={['Java', 'Kotlin']}>
-<Tab value="Java">
-
-```java
-// Add Kalman filter to reduce sensor noise
-ControlSystem filteredArm = ControlSystemKt.controlSystem(builder -> {
-    builder.feedback(fb -> fb.pid(0.05, 0.01, 0.004));
-    builder.posFilter(filter -> filter.kalman(0.1, 1.0));  // Process, measurement noise
-    return null;
-});
-```
-
-</Tab>
-<Tab value="Kotlin">
-
-```kotlin
-// Add Kalman filter to reduce sensor noise
-val filteredArm = controlSystem {
-    posPid(0.05, 0.01, 0.004)
-    posKalman(0.1, 1.0)  // Process noise, measurement noise
 }
 ```
 

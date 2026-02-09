@@ -69,27 +69,76 @@ These targets are fed into a PID controller or feedforward controller to generat
 
 ### The Math
 
-For a move distance `d` with max velocity `v_max` and max acceleration `a_max`:
+For a move distance $d$ with max velocity $v_\text{max}$ and max acceleration $a_\text{max}$:
 
 **Time to accelerate to max velocity:**
-```
-t_accel = v_max / a_max
+
+```math
+t_{\text{accel}} = \frac{v_{\text{max}}}{a_{\text{max}}}
 ```
 
 **Distance covered during acceleration:**
-```
-d_accel = 0.5 * a_max * t_accel²
+
+```math
+d_{\text{accel}} = \frac{1}{2} a_{\text{max}} t_{\text{accel}}^2 = \frac{v_{\text{max}}^2}{2 a_{\text{max}}}
 ```
 
-**If distance allows full trapezoid:**
-- Acceleration phase: `0` to `t_accel`
-- Cruise phase: `t_accel` to `t_total - t_accel`
-- Deceleration phase: `t_total - t_accel` to `t_total`
+**Cruise distance:**
 
-**If distance too short (triangular profile):**
+```math
+d_{\text{cruise}} = d - 2d_{\text{accel}}
+```
+
+**Total time:**
+
+```math
+t_{\text{total}} = 2t_{\text{accel}} + \frac{d_{\text{cruise}}}{v_{\text{max}}}
+```
+
+**If distance allows full trapezoid (d ≥ 2d_accel):**
+- Acceleration phase: 0 ≤ t < t_accel
+- Cruise phase: t_accel ≤ t < t_total - t_accel
+- Deceleration phase: t_total - t_accel ≤ t ≤ t_total
+
+**If distance too short (triangular profile, d < 2d_accel):**
 - No cruise phase
+- Peak velocity: v_peak = √(d · a_max)
 - Accelerate to peak velocity < v_max
 - Immediately decelerate
+
+### Kinematic Equations for Each Phase
+
+**Acceleration Phase** (0 ≤ t < t_accel):
+
+```math
+v(t) = a_{\text{max}} \cdot t
+```
+
+```math
+x(t) = \frac{1}{2} a_{\text{max}} \cdot t^2
+```
+
+**Cruise Phase** (t_accel ≤ t < t_total - t_accel):
+
+```math
+v(t) = v_{\text{max}}
+```
+
+```math
+x(t) = d_{\text{accel}} + v_{\text{max}} \cdot (t - t_{\text{accel}})
+```
+
+**Deceleration Phase** (t_total - t_accel ≤ t ≤ t_total):
+
+Let t_d = t - (t_total - t_accel)
+
+```math
+v(t) = v_{\text{max}} - a_{\text{max}} \cdot t_d
+```
+
+```math
+x(t) = d_{\text{accel}} + d_{\text{cruise}} + v_{\text{max}} \cdot t_d - \frac{1}{2} a_{\text{max}} \cdot t_d^2
+```
 
 ## Basic Implementation
 

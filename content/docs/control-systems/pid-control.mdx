@@ -93,6 +93,27 @@ Think of PID like a smart thermostat:
 
 Your robot does the same thing with motors, arms, and other mechanisms!
 
+### The PID Equation
+
+The complete PID controller output is calculated as:
+
+```math
+u(t) = K_p e(t) + K_i \int_0^t e(\tau) d\tau + K_d \frac{de(t)}{dt}
+```
+
+Where:
+- $u(t)$ = Controller output (motor power)
+- $e(t)$ = Error at time $t$ (target - current)
+- $K_p$ = Proportional gain
+- $K_i$ = Integral gain  
+- $K_d$ = Derivative gain
+
+In discrete form (for code implementation):
+
+```math
+u[k] = K_p e[k] + K_i \sum_{i=0}^{k} e[i] \Delta t + K_d \frac{e[k] - e[k-1]}{\Delta t}
+```
+
 ## Why Use PID?
 
 Without PID, you might tell your arm "move at 50% power for 2 seconds" and hope it lands at the right angle. Problems:
@@ -113,13 +134,25 @@ With PID, you say "go to 45 degrees" and the robot figures out the rest:
 
 This is the main driving force. The farther you are from the target, the harder you push.
 
-**Formula:** `P = kP × error`
+**Formula:**
 
-Where `error = target - current`
+```math
+P = K_p \cdot e(t)
+```
+
+Where the error is defined as:
+
+```math
+e(t) = r(t) - y(t)
+```
+
+- $r(t)$ = Target (reference) value
+- $y(t)$ = Current (measured) value
+- $e(t)$ = Error
 
 **Example:** If your arm is at 10° and you want 50°:
-- Error = 50° - 10° = 40°
-- If kP = 0.05, then P = 0.05 × 40 = 2.0 (power)
+- Error = $50° - 10° = 40°$
+- If $K_p = 0.05$, then $P = 0.05 \times 40 = 2.0$ (power)
 
 **Behavior:**
 - Large errors → Large power → Fast movement
@@ -132,7 +165,17 @@ Where `error = target - current`
 
 This accumulates error over time to eliminate steady-state error (when you're close but not quite there).
 
-**Formula:** `I = kI × (sum of all errors)`
+**Formula:**
+
+```math
+I = K_i \int_0^t e(\tau) d\tau
+```
+
+In discrete form:
+
+```math
+I[k] = K_i \sum_{i=0}^{k} e[i] \cdot \Delta t
+```
 
 **Example:** Your arm should be at 45° but keeps settling at 44.5° because gravity or friction:
 - Error keeps being 0.5°
@@ -150,11 +193,21 @@ This accumulates error over time to eliminate steady-state error (when you're cl
 
 This predicts future error by looking at how fast the error is changing. It acts like a brake!
 
-**Formula:** `D = kD × (change in error / change in time)`
+**Formula:**
+
+```math
+D = K_d \frac{de(t)}{dt}
+```
+
+In discrete form:
+
+```math
+D[k] = K_d \frac{e[k] - e[k-1]}{\Delta t}
+```
 
 **Example:** Your arm is approaching 45°, moving fast:
 - Error went from 10° to 5° in one loop
-- Change = -5° (getting closer fast!)
+- Change = $-5°$ (getting closer fast!)
 - D applies counter-force to slow down
 - Prevents overshoot
 

@@ -1,4 +1,5 @@
 import "@/app/global.css";
+import 'katex/dist/katex.css';
 import { RootProvider } from "fumadocs-ui/provider";
 import { Poppins } from "next/font/google";
 import type { ReactNode } from "react";

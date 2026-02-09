@@ -1,0 +1,338 @@
+---
+title: Webcams
+description: Camera hardware setup and configuration for FTC robots
+icon: Camera
+---
+
+## What are Webcams?
+
+Webcams give your robot vision! They capture images that can be processed to detect objects, recognize colors, identify AprilTags, and enable autonomous navigation.
+
+**Common uses in FTC:**
+- 📍 Robot localization with AprilTags
+- 🎯 Object detection and tracking
+- 🔴 Color-based game element identification
+- 📊 Position and distance estimation
+
+<Callout type="info">
+**Ready to use your webcam?** See the [Vision Overview](./vision-overview) for complete software documentation.
+</Callout>
+
+## Recommended Cameras
+
+### Logitech C920/C922
+
+**Specifications:**
+- Resolution: Up to 1920x1080
+- Frame rate: 30 FPS at 1080p
+- Field of view: 78° diagonal
+- Autofocus: Yes
+- **Price:** ~$70-100
+
+**Pros:**
+- Excellent image quality
+- Wide availability
+- Good low-light performance
+- Reliable autofocus
+
+**Cons:**
+- More expensive
+- Larger/heavier
+
+**Best for:** Teams prioritizing detection accuracy and have room/budget
+
+### Logitech C270
+
+**Specifications:**
+- Resolution: Up to 1280x720
+- Frame rate: 30 FPS at 720p
+- Field of view: 60° diagonal
+- Autofocus: No
+- **Price:** ~$25-35
+
+**Pros:**
+- Budget-friendly
+- Compact and lightweight
+- Sufficient for most tasks
+- Easy to mount
+
+**Cons:**
+- Lower resolution
+- Fixed focus
+- Smaller field of view
+
+**Best for:** Budget-conscious teams, basic detection tasks
+
+### ELP USB Cameras
+
+**Specifications:**
+- Resolution: Various (up to 1080p)
+- Frame rate: 30-60 FPS
+- Field of view: Various lens options
+- Customizable: Wide angle, fisheye, etc.
+
+**Pros:**
+- Interchangeable lenses
+- Compact module design
+- Good value
+- Various mounting options
+
+**Cons:**
+- May require tuning
+- Variable quality between models
+- Less common in FTC
+
+**Best for:** Custom applications, specific field-of-view needs
+
+## Camera Mounting
+
+### Mounting Best Practices
+
+1. **Stability is Critical**
+   - Use rigid mounts (no flex!)
+   - Secure all screws/fasteners
+   - Vibration causes blur
+
+2. **Height Considerations**
+   - Mount at consistent height
+   - Consider viewing angle to targets
+   - Don't obstruct driver's view
+
+3. **Angle and Orientation**
+   - Face forward for navigation
+   - Angle down for ground objects
+   - Consider tilting for AprilTags on walls
+
+4. **Protection**
+   - Shield from impacts
+   - Protect lens from scratches
+   - Consider bumper/guard
+
+### Mounting Examples
+
+**3D Printed Mounts:**
+- Custom fit for your camera model
+- Lightweight
+- Adjustable angle
+- Easy to iterate
+
+**REV Extrusion Mounts:**
+- Quick attachment to REV Robotics extrusion
+- Adjustable positioning
+- Reusable between robots
+
+**Cable Management:**
+- Route USB cable securely
+- Strain relief at camera
+- Avoid pinch points
+- Leave slack for movement
+
+## Camera Configuration
+
+### Adding Camera to Robot Configuration
+
+1. **Connect Camera**
+   - Plug USB camera into Robot Controller or Control Hub
+   - Wait for detection
+
+2. **Open Robot Controller App**
+   - Tap **Configure Robot**
+   - Select your active configuration
+
+3. **Add Webcam Device**
+   - Tap **Webcams** category
+   - Tap **Add**
+   - Select your camera from dropdown
+   - Give it a name (e.g., "Webcam 1")
+
+4. **Save Configuration**
+   - Tap **Done**
+   - Tap **Save** on configuration screen
+
+5. **Verify in Code**
+   ```java
+   WebcamName webcam = hardwareMap.get(WebcamName.class, "Webcam 1");
+   // Name must match configuration exactly!
+   ```
+
+### Multiple Cameras
+
+You can use multiple cameras simultaneously:
+
+```java
+WebcamName frontCamera = hardwareMap.get(WebcamName.class, "Front Camera");
+WebcamName rearCamera = hardwareMap.get(WebcamName.class, "Rear Camera");
+
+// Create separate VisionPortals
+VisionPortal frontPortal = new VisionPortal.Builder()
+    .setCamera(frontCamera)
+    .addProcessor(frontProcessor)
+    .build();
+
+VisionPortal rearPortal = new VisionPortal.Builder()
+    .setCamera(rearCamera)
+    .addProcessor(rearProcessor)
+    .build();
+```
+
+<Callout type="warn">
+**Performance Note:** Multiple cameras increase CPU load. Test thoroughly to ensure control loop remains responsive.
+</Callout>
+
+## Resolution Settings
+
+### Choosing Resolution
+
+| Resolution | Use Case | Performance | Detail |
+|------------|----------|-------------|--------|
+| 320x240 | Fast processing, simple detection | Excellent | Low |
+| 640x360 | Balanced approach ⭐ | Good | Medium |
+| 640x480 | Standard definition, good detail | Good | Medium |
+| 1280x720 | High detail, precise detection | Fair | High |
+| 1920x1080 | Maximum quality | Poor | Very High |
+
+**Recommended:** Start with 640x360 or 640x480 for best balance.
+
+```java
+visionPortal = new VisionPortal.Builder()
+    .setCamera(webcamName)
+    .setCameraResolution(new Size(640, 360))  // Set resolution
+    .build();
+```
+
+## USB Connection
+
+### USB Bandwidth
+
+USB 2.0 bandwidth is shared across all devices:
+- Control Hub has limited bandwidth
+- Multiple cameras share bandwidth
+- High resolution uses more bandwidth
+
+**Symptoms of bandwidth issues:**
+- Slow frame rate
+- Connection drops
+- Poor image quality
+
+**Solutions:**
+- Lower resolution
+- Use powered USB hub
+- Reduce frame rate
+
+### Powered USB Hubs
+
+For multiple cameras or power-hungry devices:
+
+**Recommended:** REV Robotics Powered USB Hub
+- Provides additional power
+- Expands USB ports
+- Reduces Control Hub load
+
+**Setup:**
+1. Connect hub to Control Hub
+2. Power hub from robot's 12V supply
+3. Connect cameras to hub
+
+## Troubleshooting
+
+### Camera Not Detected
+
+**Check:**
+- USB cable connected firmly
+- Camera powered (LED on)
+- Driver Station app updated
+- Try different USB port
+- Test with different camera
+
+### Poor Image Quality
+
+**Solutions:**
+- Clean lens with microfiber cloth
+- Adjust camera position
+- Improve lighting
+- Disable auto-exposure
+- Change resolution
+
+### Lag / Slow Frame Rate
+
+**Solutions:**
+- Reduce resolution
+- Disable live preview
+- Optimize processing pipeline
+- Use powered USB hub
+- Check CPU usage
+
+### Focus Issues
+
+**For autofocus cameras (C920/C922):**
+- Allow time for autofocus to settle
+- May need to manually set focus distance
+- Consider fixed-focus camera for consistency
+
+**For fixed-focus cameras (C270):**
+- Adjust camera distance to target
+- Optimal focus distance varies by camera
+- Test at competition distances
+
+## Lighting Considerations
+
+Vision processing is highly sensitive to lighting:
+
+**Best Practices:**
+- **Add LED strips** to robot for consistent lighting
+- **White LEDs** work well for most tasks
+- **Position lights** to illuminate target area
+- **Test** under competition field lighting
+- **Tune** color thresholds for lighting conditions
+
+**Avoid:**
+- Backlighting (target between camera and light)
+- Reflections on glossy surfaces
+- Shadows on target objects
+- Extreme brightness differences
+
+## Legal Rules
+
+Always check current FTC game manual for camera rules:
+
+**Typically allowed:**
+- USB webcams
+- Standard commercial cameras
+- LED lights for illumination
+
+**Typically restricted:**
+- Laser rangefinders
+- Active IR projectors (except built-in)
+- Radio transmitters
+- Excessive brightness (blinding other robots)
+
+<Callout type="warn">
+**Important:** Rules change each season. Always verify camera and lighting legality in the current game manual!
+</Callout>
+
+## Cost Summary
+
+Budget breakdown for vision system:
+
+| Item | Budget Option | Premium Option |
+|------|---------------|----------------|
+| Camera | Logitech C270 ($30) | Logitech C920 ($80) |
+| Mount | 3D printed ($2) | Commercial mount ($15) |
+| USB Cable | Included | Longer cable ($5) |
+| Lighting (opt.) | LED strip ($10) | Ring light ($25) |
+| **Total** | **$42** | **$125** |
+
+## Next Steps
+
+Ready to program your webcam? Check out:
+
+- [Vision Overview](./vision-overview) - Start here for complete vision guide
+- [EasyOpenCV Basics](./easyopencv-basics) - Custom pipeline approach
+- [VisionPortal](./vision-portal) - Modern structured approach  
+- [AprilTag Detection](./apriltag-detection) - Precise robot localization
+- [Color Blob Locator](./color-blob-locator) - Quick color detection
+
+<Callout type="info">
+**Getting Started?** Begin with [Vision Overview](./vision-overview) to choose your approach, then follow the detailed guides!
+</Callout>
+

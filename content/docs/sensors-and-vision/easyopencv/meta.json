@@ -1,0 +1,10 @@
+{
+    "title": "EasyOpenCV",
+    "icon": "Code",
+    "defaultOpen": false,
+    "pages": [
+        "easyopencv-basics",
+        "writing-pipelines",
+        "eocv-sim"
+    ]
+}

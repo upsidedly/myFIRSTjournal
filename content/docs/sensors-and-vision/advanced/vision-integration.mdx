@@ -1,0 +1,551 @@
+---
+title: Vision Integration
+description: Integrate vision processing with robot subsystems and commands
+icon: Puzzle
+---
+
+## Integration Patterns
+
+Vision processing needs to work seamlessly with your robot's control architecture. Here are proven patterns for integrating vision into your codebase.
+
+## Pattern 1: Direct OpMode Usage
+
+The simplest approach: use vision detection directly in your autonomous OpMode.
+
+**When to use:**
+- Simple autonomous routines
+- Learning and prototyping
+- Single-purpose detection
+
+**Java Example:**
+
+```java
+@Autonomous(name = "Simple Vision Auto")
+public class SimpleVisionAuto extends LinearOpMode {
+    
+    private VisionPortal visionPortal;
+    private ColorBlobLocatorProcessor colorProcessor;
+    
+    @Override
+    public void runOpMode() {
+        // Initialize vision
+        colorProcessor = new ColorBlobLocatorProcessor.Builder()
+            .setTargetColorRange(ColorRange.BLUE)
+            .build();
+        
+        visionPortal = new VisionPortal.Builder()
+            .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+            .addProcessor(colorProcessor)
+            .build();
+        
+        waitForStart();
+        
+        // Use vision data directly
+        List<ColorBlobLocatorProcessor.Blob> blobs = colorProcessor.getBlobs();
+        
+        if (!blobs.isEmpty()) {
+            // Drive to detected object
+            double targetX = blobs.get(0).getBoxFit().center.x;
+            alignToTarget(targetX);
+        }
+        
+        visionPortal.close();
+    }
+    
+    private void alignToTarget(double targetX) {
+        // Alignment logic
+    }
+}
+```
+
+## Pattern 2: Vision Subsystem
+
+Encapsulate vision in a subsystem for cleaner architecture.
+
+**When to use:**
+- Multiple OpModes need vision
+- Complex robot architecture
+- Team using command-based patterns
+
+**Java Example:**
+
+```java
+package org.firstinspires.ftc.teamcode.subsystems;
+
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor;
+import org.firstinspires.ftc.vision.opencv.ColorRange;
+import java.util.List;
+
+public class VisionSubsystem {
+    
+    private final VisionPortal visionPortal;
+    private final ColorBlobLocatorProcessor colorProcessor;
+    
+    public enum PropPosition {
+        LEFT, CENTER, RIGHT, NOT_FOUND
+    }
+    
+    public VisionSubsystem(WebcamName webcamName) {
+        // Initialize color processor
+        colorProcessor = new ColorBlobLocatorProcessor.Builder()
+            .setTargetColorRange(ColorRange.BLUE)
+            .setDrawContours(true)
+            .setBlurSize(5)
+            .build();
+        
+        // Initialize vision portal
+        visionPortal = new VisionPortal.Builder()
+            .setCamera(webcamName)
+            .addProcessor(colorProcessor)
+            .build();
+    }
+    
+    public PropPosition detectPropPosition() {
+        List<ColorBlobLocatorProcessor.Blob> blobs = colorProcessor.getBlobs();
+        
+        // Filter and sort blobs
+        ColorBlobLocatorProcessor.Util.filterByArea(500, 10000, blobs);
+        ColorBlobLocatorProcessor.Util.sortByArea(
+            ColorBlobLocatorProcessor.Util.SortOrder.DESCENDING, blobs
+        );
+        
+        if (blobs.isEmpty()) {
+            return PropPosition.NOT_FOUND;
+        }
+        
+        // Determine position
+        double centerX = blobs.get(0).getBoxFit().center.x;
+        
+        if (centerX < 213) return PropPosition.LEFT;
+        else if (centerX < 427) return PropPosition.CENTER;
+        else return PropPosition.RIGHT;
+    }
+    
+    public List<ColorBlobLocatorProcessor.Blob> getBlobs() {
+        return colorProcessor.getBlobs();
+    }
+    
+    public void enableProcessor(boolean enable) {
+        visionPortal.setProcessorEnabled(colorProcessor, enable);
+    }
+    
+    public void close() {
+        visionPortal.close();
+    }
+}
+```
+
+**Using the Subsystem:**
+
+```java
+@Autonomous(name = "Vision Subsystem Auto")
+public class VisionSubsystemAuto extends LinearOpMode {
+    
+    private VisionSubsystem vision;
+    
+    @Override
+    public void runOpMode() {
+        // Initialize subsystem
+        vision = new VisionSubsystem(
+            hardwareMap.get(WebcamName.class, "Webcam 1")
+        );
+        
+        // Detect during init
+        while (!isStarted()) {
+            VisionSubsystem.PropPosition position = vision.detectPropPosition();
+            telemetry.addData("Detected Position", position);
+            telemetry.update();
+        }
+        
+        // Get final reading
+        VisionSubsystem.PropPosition finalPosition = vision.detectPropPosition();
+        
+        // Disable to save resources
+        vision.enableProcessor(false);
+        
+        waitForStart();
+        
+        // Execute path based on detection
+        switch (finalPosition) {
+            case LEFT:
+                executeLeftPath();
+                break;
+            case CENTER:
+                executeCenterPath();
+                break;
+            case RIGHT:
+                executeRightPath();
+                break;
+        }
+        
+        vision.close();
+    }
+}
+```
+
+## Pattern 3: Mercurial/NextFTC Integration
+
+Integrate with modern command-based frameworks like Mercurial.
+
+**Kotlin Example:**
+
+```kotlin
+package org.firstinspires.ftc.teamcode.subsystems
+
+import com.rowanmcalpin.nextftc.ftc.OpModeData
+import com.rowanmcalpin.nextftc.subsystems.Subsystem
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName
+import org.firstinspires.ftc.vision.VisionPortal
+import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor
+import org.firstinspires.ftc.vision.opencv.ColorRange
+import org.firstinspires.ftc.vision.opencv.ImageRegion
+
+class VisionSubsystem : Subsystem {
+    
+    enum class PropPosition {
+        LEFT, CENTER, RIGHT, NOT_FOUND
+    }
+    
+    private val colorProcessor: ColorBlobLocatorProcessor
+    private val visionPortal: VisionPortal
+    
+    var currentPosition: PropPosition = PropPosition.NOT_FOUND
+        private set
+    
+    init {
+        // Initialize processor
+        colorProcessor = ColorBlobLocatorProcessor.Builder()
+            .setTargetColorRange(ColorRange.BLUE)
+            .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+            .setRoi(ImageRegion.entireFrame())
+            .setDrawContours(true)
+            .setBlurSize(5)
+            .build()
+        
+        // Initialize portal
+        val webcamName = OpModeData.hardwareMap.get(WebcamName::class.java, "Webcam 1")
+        
+        visionPortal = VisionPortal.Builder()
+            .setCamera(webcamName)
+            .addProcessor(colorProcessor)
+            .build()
+    }
+    
+    override fun periodic() {
+        // Update detection every cycle
+        currentPosition = detectPosition()
+    }
+    
+    private fun detectPosition(): PropPosition {
+        val blobs = colorProcessor.blobs
+        
+        // Filter and sort
+        ColorBlobLocatorProcessor.Util.filterByArea(500.0, 10000.0, blobs)
+        ColorBlobLocatorProcessor.Util.sortByArea(
+            ColorBlobLocatorProcessor.Util.SortOrder.DESCENDING, blobs
+        )
+        
+        if (blobs.isEmpty()) {
+            return PropPosition.NOT_FOUND
+        }
+        
+        val centerX = blobs[0].boxFit.center.x
+        
+        return when {
+            centerX < 213 -> PropPosition.LEFT
+            centerX < 427 -> PropPosition.CENTER
+            else -> PropPosition.RIGHT
+        }
+    }
+    
+    fun getBlobs() = colorProcessor.blobs
+    
+    fun enableProcessor(enable: Boolean) {
+        visionPortal.setProcessorEnabled(colorProcessor, enable)
+    }
+    
+    fun close() {
+        visionPortal.close()
+    }
+}
+```
+
+**Using with Commands:**
+
+```kotlin
+@Autonomous(name = "Command-Based Vision")
+class CommandVisionAuto : OpMode() {
+    
+    private lateinit var vision: VisionSubsystem
+    
+    override fun init() {
+        OpModeData.updateData(this, gamepad1, gamepad2)
+        
+        vision = VisionSubsystem()
+    }
+    
+    override fun init_loop() {
+        // Vision subsystem automatically updates via periodic()
+        telemetry.addData("Detected Position", vision.currentPosition)
+        telemetry.update()
+    }
+    
+    override fun start() {
+        val detectedPosition = vision.currentPosition
+        
+        // Build command based on detection
+        val autoCommand = when (detectedPosition) {
+            VisionSubsystem.PropPosition.LEFT -> buildLeftPath()
+            VisionSubsystem.PropPosition.CENTER -> buildCenterPath()
+            VisionSubsystem.PropPosition.RIGHT -> buildRightPath()
+            VisionSubsystem.PropPosition.NOT_FOUND -> buildDefaultPath()
+        }
+        
+        // Disable vision to save resources
+        vision.enableProcessor(false)
+        
+        // Schedule the command
+        CommandScheduler.scheduleCommand(autoCommand)
+    }
+    
+    override fun loop() {
+        CommandScheduler.run()
+    }
+}
+```
+
+## Pattern 4: Continuous Tracking
+
+Continuously update robot state using vision data.
+
+**Use cases:**
+- AprilTag localization
+- Dynamic target tracking
+- Visual servoing
+
+**Example:**
+
+```java
+public class ContinuousVisionTracking extends LinearOpMode {
+    
+    private AprilTagProcessor aprilTagProcessor;
+    private VisionPortal visionPortal;
+    private Pose2d robotPose = new Pose2d(0, 0, 0);
+    
+    @Override
+    public void runOpMode() {
+        initializeVision();
+        
+        waitForStart();
+        
+        // Continuously update pose
+        while (opModeIsActive()) {
+            updatePoseFromAprilTags();
+            
+            // Use updated pose for navigation
+            navigateToTarget();
+            
+            telemetry.addData("Robot X", robotPose.getX());
+            telemetry.addData("Robot Y", robotPose.getY());
+            telemetry.addData("Robot Heading", robotPose.getHeading());
+            telemetry.update();
+        }
+    }
+    
+    private void updatePoseFromAprilTags() {
+        List<AprilTagDetection> detections = aprilTagProcessor.getDetections();
+        
+        if (!detections.isEmpty()) {
+            // Use first visible tag to update pose
+            AprilTagDetection detection = detections.get(0);
+            
+            // Get tag's known field position
+            Pose2d tagPose = getTagFieldPose(detection.id);
+            
+            // Calculate robot pose from tag detection
+            robotPose = calculateRobotPose(tagPose, detection);
+        }
+    }
+    
+    private Pose2d getTagFieldPose(int tagId) {
+        // Return known field position of tag
+        // This data comes from field specifications
+        return new Pose2d(0, 0, 0);  // Placeholder
+    }
+    
+    private Pose2d calculateRobotPose(Pose2d tagPose, AprilTagDetection detection) {
+        // Transform tag-relative pose to field-relative pose
+        // Complex math involving rotation matrices
+        return new Pose2d(0, 0, 0);  // Placeholder
+    }
+}
+```
+
+## FTC Dashboard Integration
+
+Stream camera feed and telemetry together:
+
+**Setup:**
+
+1. Add FTC Dashboard dependency to `build.gradle`:
+```kotlin
+implementation 'com.acmerobotics.dashboard:dashboard:0.4.12'
+```
+
+2. Enable camera streaming:
+```java
+FtcDashboard dashboard = FtcDashboard.getInstance();
+visionPortal = new VisionPortal.Builder()
+    .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+    .addProcessor(colorProcessor)
+    .build();
+
+// Dashboard automatically shows camera feed
+```
+
+3. View at `http://192.168.43.1:8080/dash`
+
+**Tunable Parameters:**
+
+```java
+public class TunableVisionPipeline extends OpenCvPipeline {
+    
+    @Config
+    public static class VisionConfig {
+        public static int minHue = 100;
+        public static int maxHue = 130;
+        public static int minSat = 100;
+        public static double minArea = 500;
+    }
+    
+    @Override
+    public Mat processFrame(Mat input) {
+        // Use VisionConfig values
+        Scalar lower = new Scalar(VisionConfig.minHue, VisionConfig.minSat, 100);
+        Scalar upper = new Scalar(VisionConfig.maxHue, 255, 255);
+        
+        // Process with tunable parameters
+        return input;
+    }
+}
+```
+
+Adjust parameters in Dashboard web interface in real-time!
+
+## Error Handling
+
+Always handle vision failures gracefully:
+
+```java
+public PropPosition detectWithFallback() {
+    try {
+        List<ColorBlobLocatorProcessor.Blob> blobs = colorProcessor.getBlobs();
+        
+        if (blobs == null || blobs.isEmpty()) {
+            telemetry.addLine("Warning: No blobs detected, using default");
+            return PropPosition.CENTER;  // Safe default
+        }
+        
+        // Normal detection logic
+        return detectPosition(blobs);
+        
+    } catch (Exception e) {
+        telemetry.addData("Vision Error", e.getMessage());
+        telemetry.addLine("Using default position");
+        return PropPosition.CENTER;  // Safe fallback
+    }
+}
+```
+
+## Performance Optimization
+
+### Lazy Initialization
+
+Only create vision when needed:
+
+```java
+private VisionPortal visionPortal;
+
+private void ensureVisionInitialized() {
+    if (visionPortal == null) {
+        visionPortal = new VisionPortal.Builder()
+            .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+            .addProcessor(colorProcessor)
+            .build();
+    }
+}
+```
+
+### Conditional Processing
+
+Process vision only when needed:
+
+```java
+public class ConditionalVisionSubsystem {
+    
+    private boolean visionEnabled = false;
+    
+    public void enableVision() {
+        visionEnabled = true;
+        visionPortal.setProcessorEnabled(colorProcessor, true);
+    }
+    
+    public void disableVision() {
+        visionEnabled = false;
+        visionPortal.setProcessorEnabled(colorProcessor, false);
+    }
+    
+    public void periodic() {
+        if (visionEnabled) {
+            // Only process when enabled
+            updateDetections();
+        }
+    }
+}
+```
+
+## Testing Strategies
+
+### Mock Vision for Testing
+
+```java
+public interface IVisionSubsystem {
+    PropPosition detectPosition();
+}
+
+public class RealVisionSubsystem implements IVisionSubsystem {
+    // Real implementation
+}
+
+public class MockVisionSubsystem implements IVisionSubsystem {
+    private PropPosition mockPosition = PropPosition.CENTER;
+    
+    public void setMockPosition(PropPosition position) {
+        this.mockPosition = position;
+    }
+    
+    @Override
+    public PropPosition detectPosition() {
+        return mockPosition;
+    }
+}
+```
+
+Use mock for testing autonomous logic without camera!
+
+## Best Practices
+
+1. **Initialize Early** - Start camera in `init()`, not `start()`
+2. **Disable When Done** - Save CPU by disabling unused processors
+3. **Handle Failures** - Always have fallback behavior
+4. **Test Thoroughly** - Test with and without objects detected
+5. **Monitor Performance** - Watch for frame drops and lag
+6. **Clean Up** - Always close VisionPortal when done
+
+## Next Steps
+
+- Explore [Advanced Techniques](./advanced-vision)
+- See [Troubleshooting Guide](./troubleshooting)
+- Review [Migration Guide](./migration-guide) for upgrading

@@ -1,0 +1,10 @@
+{
+    "title": "VisionPortal",
+    "icon": "Scan",
+    "defaultOpen": false,
+    "pages": [
+        "vision-portal",
+        "color-blob-locator",
+        "apriltag-detection"
+    ]
+}

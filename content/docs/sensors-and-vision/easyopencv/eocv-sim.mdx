@@ -1,0 +1,324 @@
+---
+title: EOCV-Sim Testing
+description: Test vision pipelines offline with EOCV-Sim simulator
+icon: Monitor
+---
+
+## What is EOCV-Sim?
+
+EOCV-Sim is an offline simulator that lets you develop and test OpenCV pipelines without needing a robot or camera. It's essential for rapid development and iteration.
+
+**Benefits:**
+- Test pipelines with images or live webcam
+- Instant feedback on parameter changes
+- No robot hardware required
+- Tune color thresholds visually
+- Save hours of testing time
+- **See pixel measurements on screen** - Visualize detected objects with pixel sizes directly on your computer without loading up the FTC Driver Hub
+- Test different lighting conditions quickly
+
+## Installation
+
+### For Java Users
+
+1. **Download EOCV-Sim**
+   - Visit [EOCV-Sim Releases](https://github.com/deltacv/EOCV-Sim/releases)
+   - Download the latest `.jar` file
+
+2. **Run the Simulator**
+   ```bash
+   java -jar EOCV-Sim-X.X.X-all.jar
+   ```
+
+3. **Add Your Pipeline Code**
+   - Place your pipeline `.java` files in the simulator's workspace
+   - Or use File → Open Workspace to select your project
+
+### For Kotlin Users
+
+<Callout type="warn">
+**Important:** EOCV-Sim does not natively support Kotlin from JAR file. You must clone the project and run it in IntelliJ IDEA.
+</Callout>
+
+1. **Install Prerequisites**
+   - Install [IntelliJ IDEA](https://www.jetbrains.com/idea/download/) (Community Edition is free)
+   - Install JDK 11 or higher
+   - Install Git
+
+2. **Clone EOCV-Sim**
+   ```bash
+   git clone https://github.com/deltacv/EOCV-Sim.git
+   cd EOCV-Sim
+   ```
+
+3. **Open in IntelliJ**
+   - Open IntelliJ IDEA
+   - Select **File → Open**
+   - Navigate to the cloned EOCV-Sim folder
+   - Wait for Gradle sync to complete
+
+4. **Add Your Kotlin Pipelines**
+   - Create a new package in `TeamCode/src/main/kotlin/`
+   - Add your pipeline `.kt` files there
+
+5. **Run the Simulator**
+   - Find the `Main.kt` file
+   - Click the green play button or right-click → Run 'Main'
+
+## Using EOCV-Sim
+
+### Import Pipeline
+
+**Java:**
+1. Click **Pipelines → Import Class**
+2. Navigate to your `.java` file
+3. Select your pipeline class
+
+**Kotlin (IntelliJ):**
+1. Your pipelines are automatically detected
+2. Select from the pipeline dropdown
+
+### Select Input Source
+
+Choose what the simulator should process:
+
+- **Images** - Load test images from your computer
+- **Camera** - Use your laptop's webcam
+- **Video** - Process video files
+
+Click **Input Source** and choose your option.
+
+### Tune Parameters
+
+EOCV-Sim can show sliders for tunable variables in your pipeline. This lets you adjust color thresholds and other parameters in real-time without restarting!
+
+**For Java (using Workspaces):**
+
+Simply declare public fields in your pipeline:
+
+```java
+public class TunablePipeline extends OpenCvPipeline {
+    
+    public int minHue = 0;
+    public int maxHue = 10;
+    public int minSat = 100;
+    public double minArea = 100.0;
+    
+    @Override
+    public Mat processFrame(Mat input) {
+        Scalar lower = new Scalar(minHue, minSat, 100);
+        Scalar upper = new Scalar(maxHue, 255, 255);
+        // Use these tunable values
+        return input;
+    }
+}
+```
+
+**For Kotlin (building from source):**
+
+Use `@JvmField` annotation to expose variables:
+
+```kotlin
+class TunablePipeline : OpenCvPipeline() {
+    
+    @JvmField var minHue = 0.0
+    @JvmField var maxHue = 10.0
+    @JvmField var minSat = 100.0
+    @JvmField var minArea = 100.0
+    
+    override fun processFrame(input: Mat): Mat {
+        val lower = Scalar(minHue, minSat, 100.0)
+        val upper = Scalar(maxHue, 255.0, 255.0)
+        // Use these tunable values
+        return input
+    }
+}
+```
+
+Sliders will appear automatically in the EOCV-Sim interface!
+
+### Save Tuned Values
+
+Once you've found good parameters:
+1. Note the values from the UI
+2. Update your code with these values
+3. Deploy to your robot
+
+## Workflow: Sim to Robot
+
+### Step 1: Develop in Simulator
+
+Use public fields (Java) or `@JvmField` (Kotlin) for any values you want to tune:
+
+```kotlin
+class DetectionPipeline : OpenCvPipeline() {
+    
+    @JvmField var minArea = 100.0
+    @JvmField var hueMin = 0.0
+    @JvmField var hueMax = 10.0
+    
+    // ... rest of pipeline
+}
+```
+
+Test with various images and adjust sliders until detection is reliable.
+
+### Step 2: Copy Values to Robot Code
+
+Once tuned, note the values from the sliders and update your robot code:
+
+```kotlin
+class DetectionPipeline : OpenCvPipeline() {
+    
+    // Values tuned in EOCV-Sim:
+    private val minArea = 250.5  //  From slider
+    private val hueMin = 5.0      // From slider
+    private val hueMax = 12.0     // From slider
+    
+    // ... rest of pipeline
+}
+```
+
+You can remove `@JvmField` when deploying to robot if you want values to be fixed.
+
+### Step 3: Test on Robot
+
+Deploy to your robot and test with real conditions:
+- Different lighting
+- Camera angle
+- Movement
+
+### Step 4: Fine-tune with Dashboard
+
+Use FTC Dashboard for final adjustments in real conditions.
+
+## Collecting Test Images
+
+### From Robot Camera
+
+1. **Enable Camera Stream**
+   ```java
+   webcam.startStreaming(640, 360, OpenCvCameraRotation.UPRIGHT);
+   ```
+
+2. **Use FTC Dashboard**
+   - Connect to `http://192.168.43.1:8080/dash` (RC device IP)
+   - View camera feed
+   - Take screenshots
+
+3. **Transfer Images**
+   - Copy screenshots to your computer
+   - Use in EOCV-Sim for testing
+
+### From Competition Field
+
+Take reference photos of:
+- Game elements in good lighting
+- Game elements in poor lighting
+- Different angles and distances
+- Edge cases (partially visible, occluded)
+
+Build a test image library for comprehensive testing.
+
+## Common Simulator Issues
+
+### Pipeline Not Detected
+
+**Problem:** Your pipeline doesn't appear in the dropdown
+
+**Solutions:**
+- Ensure it extends `OpenCvPipeline`
+- Check for compilation errors
+- Refresh the workspace (File → Reload Workspace)
+- For Kotlin: Ensure project built successfully in IntelliJ
+
+### Performance Warnings
+
+**Problem:** Processing is slow, warnings about frame drops
+
+**Solutions:**
+- Reduce input resolution
+- Optimize your pipeline code
+- Simplify operations
+- Use smaller test images
+
+### Color Differences from Robot
+
+**Problem:** Colors look different in simulator vs robot
+
+**Causes:**
+- Different camera hardware
+- Lighting conditions vary
+- Color space conversions
+
+**Solutions:**
+- Test with images taken from robot camera
+- Add tolerance to thresholds
+- Use adaptive thresholding techniques
+
+## Advanced Features
+
+### Multiple Pipeline Comparison
+
+Run multiple pipelines side-by-side:
+1. Create variants of your pipeline
+2. Switch between them quickly
+3. Compare results visually
+
+### Video Recording
+
+Record your pipeline's output:
+1. Enable recording in settings
+2. Process video or live feed
+3. Review frame-by-frame
+
+### Custom Input Sources
+
+Load specific test scenarios:
+- Create image sets for different conditions
+- Test edge cases systematically
+- Validate across multiple frames
+
+## Tips for Effective Testing
+
+### 1. Build a Test Library
+
+Collect images covering:
+- ✅ Normal conditions
+- ✅ Poor lighting (dark, bright, shadows)
+- ✅ Different distances
+- ✅ Partial occlusion
+- ✅ Similar colored objects nearby
+
+### 2. Test Extremes
+
+Don't just test ideal conditions:
+- Very close and very far
+- Extreme angles
+- Object at image edges
+- Multiple objects in frame
+
+### 3. Document Your Values
+
+Keep notes on tuned parameters:
+```
+Red Detection:
+- HSV Min: (0, 120, 100)
+- HSV Max: (10, 255, 255)
+- Min Area: 250px
+- Tested on: 640x360 resolution
+```
+
+### 4. Version Control
+
+Commit working pipeline versions to git. If changes break detection, you can revert.
+
+### 5. Validate on Robot Early
+
+Don't tune exclusively in simulator. Test on real hardware frequently to catch issues early.
+
+## Next Steps
+
+- Return to [Writing Pipelines](./writing-pipelines) with testing knowledge
+- Learn about [VisionPortal](./vision-portal) for structured approach
+- Explore [Integration Patterns](./vision-integration) for robot code

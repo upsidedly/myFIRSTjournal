@@ -1,0 +1,9 @@
+{
+    "title": "Hardware",
+    "icon": "Webcam",
+    "defaultOpen": false,
+    "pages": [
+        "webcam",
+        "color-sensor-v3"
+    ]
+}

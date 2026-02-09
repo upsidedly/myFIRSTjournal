@@ -1,0 +1,9 @@
+{
+    "title": "Advanced Topics",
+    "icon": "Settings",
+    "defaultOpen": false,
+    "pages": [
+        "vision-integration",
+        "troubleshooting"
+    ]
+}

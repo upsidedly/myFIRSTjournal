@@ -1,0 +1,616 @@
+---
+title: ColorBlobLocatorProcessor
+description: Built-in blob detection for simple color-based object detection
+icon: CircleDot
+---
+
+## What is ColorBlobLocatorProcessor?
+
+ColorBlobLocatorProcessor is a built-in VisionPortal processor that detects colored objects (blobs) in the camera feed. It handles the complex OpenCV operations for you, providing a simple API for common detection tasks.
+
+**Perfect for:**
+- Detecting team props
+- Finding game elements by color
+- Alliance-specific detection
+- Quick prototyping
+
+## Basic Usage
+
+### Creating the Processor
+
+**Java:**
+
+```java
+ColorBlobLocatorProcessor colorProcessor = new ColorBlobLocatorProcessor.Builder()
+    .setTargetColorRange(ColorRange.BLUE)  // What color to find
+    .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+    .setRoi(ImageRegion.entireFrame())      // Where to look
+    .setDrawContours(true)                  // Draw on preview
+    .setBlurSize(5)                         // Noise reduction
+    .build();
+```
+
+**Kotlin:**
+
+```kotlin
+val colorProcessor = ColorBlobLocatorProcessor.Builder()
+    .setTargetColorRange(ColorRange.BLUE)
+    .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+    .setRoi(ImageRegion.entireFrame())
+    .setDrawContours(true)
+    .setBlurSize(5)
+    .build()
+```
+
+### Getting Results
+
+**Java:**
+
+```java
+// Get all detected blobs
+List<ColorBlobLocatorProcessor.Blob> blobs = colorProcessor.getBlobs();
+
+// Filter by area (min 100px, max 5000px)
+ColorBlobLocatorProcessor.Util.filterByArea(100, 5000, blobs);
+
+// Sort by size (largest first)
+ColorBlobLocatorProcessor.Util.sortByArea(
+    ColorBlobLocatorProcessor.Util.SortOrder.DESCENDING, blobs
+);
+
+// Get the largest blob
+if (!blobs.isEmpty()) {
+    ColorBlobLocatorProcessor.Blob largest = blobs.get(0);
+    
+    // Get position
+    RotatedRect box = largest.getBoxFit();
+    double x = box.center.x;
+    double y = box.center.y;
+    
+    // Get properties
+    double area = largest.getContourArea();
+    double density = largest.getDensity();
+    double aspectRatio = largest.getAspectRatio();
+}
+```
+
+**Kotlin:**
+
+```kotlin
+// Get all detected blobs
+val blobs = colorProcessor.blobs
+
+// Filter by area (min 100px, max 5000px)
+ColorBlobLocatorProcessor.Util.filterByArea(100.0, 5000.0, blobs)
+
+// Sort by size (largest first)
+ColorBlobLocatorProcessor.Util.sortByArea(
+    ColorBlobLocatorProcessor.Util.SortOrder.DESCENDING, blobs
+)
+
+// Get the largest blob
+if (blobs.isNotEmpty()) {
+    val largest = blobs[0]
+    
+    // Get position
+    val box = largest.boxFit
+    val x = box.center.x
+    val y = box.center.y
+    
+    // Get properties
+    val area = largest.contourArea
+    val density = largest.density
+    val aspectRatio = largest.aspectRatio
+}
+```
+
+## Builder Configuration
+
+### Target Color Range
+
+Choose from predefined color ranges:
+
+```java
+.setTargetColorRange(ColorRange.BLUE)
+.setTargetColorRange(ColorRange.RED)
+.setTargetColorRange(ColorRange.YELLOW)
+.setTargetColorRange(ColorRange.GREEN)
+```
+
+Or define a custom range:
+
+```java
+ColorRange customRange = new ColorRange(
+    ColorSpace.YCrCb,                          // Color space
+    new Scalar(0, 0, 150),                      // Lower bound
+    new Scalar(255, 120, 255),                  // Upper bound
+    ColorBlobLocatorProcessor.Scalar.RANGE_THRESHOLD  // Threshold
+);
+
+.setTargetColorRange(customRange)
+```
+
+### Region of Interest (ROI)
+
+Only process specific parts of the image:
+
+```java
+// Entire frame
+.setRoi(ImageRegion.entireFrame())
+
+// Custom rectangle (x, y, width, height)
+.setRoi(ImageRegion.asUnityCenterCoordinates(
+    -0.5, -0.5,  // Top-left corner (-1 to 1)
+    0.5, 0.5     // Bottom-right corner
+))
+
+// Pixel coordinates
+ImageRegion customRoi = new ImageRegion() {
+    @Override
+    public Rect asImageCoordinates(int imageWidth, int imageHeight, 
+                                   CameraCalibration calibration) {
+        return new Rect(100, 100, 400, 300);  // x, y, width, height
+    }
+};
+.setRoi(customRoi)
+```
+
+### Contour Mode
+
+Control which contours are detected:
+
+```java
+// External contours only (default, fastest)
+.setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+
+// All contours (including holes)
+.setContourMode(ColorBlobLocatorProcessor.ContourMode.ALL)
+```
+
+### Visual Feedback
+
+Draw detection results on the preview:
+
+```java
+// Draw contours around detected blobs
+.setDrawContours(true)
+
+// Configure box drawing
+.setBoxFit(ColorBlobLocatorProcessor.BoxFit.ROTATE)  // Rotated rectangle
+.setBoxFit(ColorBlobLocatorProcessor.BoxFit.NONE)    // No box
+```
+
+### Noise Reduction
+
+Apply Gaussian blur to reduce noise:
+
+```java
+// Blur size (odd number, 0 to disable)
+.setBlurSize(5)  // 5x5 blur kernel
+```
+
+Higher values = more blur = less noise but also less detail.
+
+## Blob Properties
+
+Each detected blob provides useful information:
+
+### Position Data
+
+```java
+RotatedRect boxFit = blob.getBoxFit();
+
+// Center position
+double centerX = boxFit.center.x;
+double centerY = boxFit.center.y;
+
+// Box dimensions
+double width = boxFit.size.width;
+double height = boxFit.size.height;
+
+// Rotation angle
+double angle = boxFit.angle;
+```
+
+### Shape Analysis
+
+```java
+// Contour area (in pixels)
+double area = blob.getContourArea();
+
+// Density (how "filled" the blob is, 0-1)
+double density = blob.getDensity();
+
+// Aspect ratio (width / height)
+double aspectRatio = blob.getAspectRatio();
+
+// Bounding box
+Rect boundingBox = blob.getContour().boundingRect();
+```
+
+### Raw Contour
+
+Access the raw OpenCV contour for advanced analysis:
+
+```java
+MatOfPoint contour = blob.getContour();
+// Use with OpenCV functions
+```
+
+## Filtering and Sorting
+
+### Filter by Area
+
+Keep only blobs within size range:
+
+```java
+// Minimum pixels, maximum pixels
+ColorBlobLocatorProcessor.Util.filterByArea(200, 5000, blobs);
+```
+
+### Filter by Density
+
+Keep only "solid" blobs:
+
+```java
+// Minimum density (0.0 to 1.0)
+ColorBlobLocatorProcessor.Util.filterByDensity(0.7, blobs);
+```
+
+### Filter by Aspect Ratio
+
+Keep only blobs with certain proportions:
+
+```java
+// Minimum ratio, maximum ratio
+ColorBlobLocatorProcessor.Util.filterByAspectRatio(0.5, 2.0, blobs);
+```
+
+### Sort Blobs
+
+```java
+// By area
+ColorBlobLocatorProcessor.Util.sortByArea(SortOrder.DESCENDING, blobs);
+ColorBlobLocatorProcessor.Util.sortByArea(SortOrder.ASCENDING, blobs);
+
+// By density
+ColorBlobLocatorProcessor.Util.sortByDensity(SortOrder.DESCENDING, blobs);
+```
+
+## Complete Example: Team Prop Detection
+
+This example detects a team prop and determines its position (left/center/right):
+
+**Java:**
+
+```java
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor;
+import org.firstinspires.ftc.vision.opencv.ColorRange;
+import org.firstinspires.ftc.vision.opencv.ImageRegion;
+import org.opencv.core.RotatedRect;
+import java.util.List;
+
+@Autonomous(name = "Team Prop Detection")
+public class TeamPropAuto extends LinearOpMode {
+    
+    enum PropPosition {
+        LEFT,
+        CENTER,
+        RIGHT,
+        NOT_FOUND
+    }
+    
+    private VisionPortal visionPortal;
+    private ColorBlobLocatorProcessor colorProcessor;
+    
+    @Override
+    public void runOpMode() {
+        
+        // Create color processor for blue team prop
+        colorProcessor = new ColorBlobLocatorProcessor.Builder()
+            .setTargetColorRange(ColorRange.BLUE)
+            .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+            .setRoi(ImageRegion.entireFrame())
+            .setDrawContours(true)
+            .setBlurSize(5)
+            .build();
+        
+        // Create VisionPortal
+        visionPortal = new VisionPortal.Builder()
+            .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+            .addProcessor(colorProcessor)
+            .build();
+        
+        // Wait for camera to start
+        while (!isStarted() && !isStopRequested()) {
+            PropPosition position = detectPropPosition();
+            telemetry.addData("Prop Position", position);
+            telemetry.addData("Status", "Ready! Press Play");
+            telemetry.update();
+            sleep(50);
+        }
+        
+        // Get final position reading
+        PropPosition finalPosition = detectPropPosition();
+        
+        // Disable processor to save resources
+        visionPortal.setProcessorEnabled(colorProcessor, false);
+        
+        waitForStart();
+        
+        // Use detected position for autonomous
+        switch (finalPosition) {
+            case LEFT:
+                telemetry.addLine("Going LEFT");
+                // Execute left path
+                break;
+            case CENTER:
+                telemetry.addLine("Going CENTER");
+                // Execute center path
+                break;
+            case RIGHT:
+                telemetry.addLine("Going RIGHT");
+                // Execute right path
+                break;
+            case NOT_FOUND:
+                telemetry.addLine("Prop not found, using default");
+                // Execute default path
+                break;
+        }
+        telemetry.update();
+        
+        sleep(2000);
+        visionPortal.close();
+    }
+    
+    private PropPosition detectPropPosition() {
+        // Get detected blobs
+        List<ColorBlobLocatorProcessor.Blob> blobs = colorProcessor.getBlobs();
+        
+        // Filter: area between 500-10000 pixels, density > 0.6
+        ColorBlobLocatorProcessor.Util.filterByArea(500, 10000, blobs);
+        ColorBlobLocatorProcessor.Util.filterByDensity(0.6, blobs);
+        
+        // Sort by size (largest first)
+        ColorBlobLocatorProcessor.Util.sortByArea(
+            ColorBlobLocatorProcessor.Util.SortOrder.DESCENDING, blobs
+        );
+        
+        // Return position UNKNOWN if no blobs found
+        if (blobs.isEmpty()) {
+            return PropPosition.NOT_FOUND;
+        }
+        
+        // Get largest blob
+        ColorBlobLocatorProcessor.Blob largestBlob = blobs.get(0);
+        RotatedRect boxFit = largestBlob.getBoxFit();
+        double centerX = boxFit.center.x;
+        
+        // Determine position based on X coordinate
+        // Assuming 640px wide image
+        if (centerX < 213) {
+            return PropPosition.LEFT;
+        } else if (centerX < 427) {
+            return PropPosition.CENTER;
+        } else {
+            return PropPosition.RIGHT;
+        }
+    }
+}
+```
+
+**Kotlin:**
+
+```kotlin
+package org.firstinspires.ftc.teamcode
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName
+import org.firstinspires.ftc.vision.VisionPortal
+import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor
+import org.firstinspires.ftc.vision.opencv.ColorRange
+import org.firstinspires.ftc.vision.opencv.ImageRegion
+
+@Autonomous(name = "Team Prop Detection")
+class TeamPropAuto : LinearOpMode() {
+    
+    enum class PropPosition {
+        LEFT, CENTER, RIGHT, NOT_FOUND
+    }
+    
+    private lateinit var visionPortal: VisionPortal
+    private lateinit var colorProcessor: ColorBlobLocatorProcessor
+    
+    override fun runOpMode() {
+        
+        // Create color processor for blue team prop
+        colorProcessor = ColorBlobLocatorProcessor.Builder()
+            .setTargetColorRange(ColorRange.BLUE)
+            .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+            .setRoi(ImageRegion.entireFrame())
+            .setDrawContours(true)
+            .setBlurSize(5)
+            .build()
+        
+        // Create VisionPortal
+        visionPortal = VisionPortal.Builder()
+            .setCamera(hardwareMap.get(WebcamName::class.java, "Webcam 1"))
+            .addProcessor(colorProcessor)
+            .build()
+        
+        // Wait for camera to start
+        while (!isStarted && !isStopRequested) {
+            val position = detectPropPosition()
+            telemetry.addData("Prop Position", position)
+            telemetry.addData("Status", "Ready! Press Play")
+            telemetry.update()
+            sleep(50)
+        }
+        
+        // Get final position reading
+        val finalPosition = detectPropPosition()
+        
+        // Disable processor to save resources
+        visionPortal.setProcessorEnabled(colorProcessor, false)
+        
+        waitForStart()
+        
+        // Use detected position for autonomous
+        when (finalPosition) {
+            PropPosition.LEFT -> {
+                telemetry.addLine("Going LEFT")
+                // Execute left path
+            }
+            PropPosition.CENTER -> {
+                telemetry.addLine("Going CENTER")
+                // Execute center path
+            }
+            PropPosition.RIGHT -> {
+                telemetry.addLine("Going RIGHT")
+                // Execute right path
+            }
+            PropPosition.NOT_FOUND -> {
+                telemetry.addLine("Prop not found, using default")
+                // Execute default path
+            }
+        }
+        telemetry.update()
+        
+        sleep(2000)
+        visionPortal.close()
+    }
+    
+    private fun detectPropPosition(): PropPosition {
+        // Get detected blobs
+        val blobs = colorProcessor.blobs
+        
+        // Filter: area between 500-10000 pixels, density > 0.6
+        ColorBlobLocatorProcessor.Util.filterByArea(500.0, 10000.0, blobs)
+        ColorBlobLocatorProcessor.Util.filterByDensity(0.6, blobs)
+        
+        // Sort by size (largest first)
+        ColorBlobLocatorProcessor.Util.sortByArea(
+            ColorBlobLocatorProcessor.Util.SortOrder.DESCENDING, blobs
+        )
+        
+        // Return NOT_FOUND if no blobs found
+        if (blobs.isEmpty()) {
+            return PropPosition.NOT_FOUND
+        }
+        
+        // Get largest blob
+        val largestBlob = blobs[0]
+        val boxFit = largestBlob.boxFit
+        val centerX = boxFit.center.x
+        
+        // Determine position based on X coordinate
+        // Assuming 640px wide image
+        return when {
+            centerX < 213 -> PropPosition.LEFT
+            centerX < 427 -> PropPosition.CENTER
+            else -> PropPosition.RIGHT
+        }
+    }
+}
+```
+
+## Tuning Tips
+
+###1. Choose the Right Color Space
+
+- **YCrCb** - Best for FTC alliance colors (red/blue)
+- **HSV** - Good general-purpose choice
+- **RGB** - Least reliable, avoid if possible
+
+### 2. Test Lighting Conditions
+
+Tune parameters under:
+- Bright field lights
+- Dim lighting
+- With camera auto-exposure
+
+### 3. Use Appropriate Filters
+
+```java
+// Too restrictive: may miss objects
+filterByArea(2000, 3000, blobs);  // Very narrow range
+filterByDensity(0.95, blobs);      // Nearly perfect
+
+// Just right: catches most cases
+filterByArea(500, 5000, blobs);    // Reasonable range
+filterByDensity(0.6, blobs);       // Allows imperfect detection
+```
+
+### 4. Handle Edge Cases
+
+```java
+// Always check if blobs list is empty
+if (!blobs.isEmpty()) {
+    // Process blobs
+} else {
+    // Use default behavior
+}
+```
+
+### 5. ROI for Performance
+
+Limit search area to where objects appear:
+
+```java
+// Only check bottom half of frame
+.setRoi(ImageRegion.asUnityCenterCoordinates(-1, 0, 1, 1))
+```
+
+## Troubleshooting
+
+### No Blobs Detected
+
+**Causes:**
+- Wrong color range
+- Lighting too bright/dark
+- Object outside ROI
+- Filters too restrictive
+
+**Solutions:**
+- Verify color range with EOCV-Sim
+- Adjust thresholds
+- Expand ROI
+- Loosen filters
+
+### Too Many False Positives
+
+**Causes:**
+- Color range too broad
+- No area filtering
+- Similar colored background
+
+**Solutions:**
+- Narrow color thresholds
+- Add `filterByArea()` and `filterByDensity()`
+- Use ROI to exclude background
+
+### Poor Performance
+
+**Causes:**
+- High resolution
+- Large ROI
+- Complex scene
+
+**Solutions:**
+- Reduce camera resolution
+- Restrict ROI
+- Increase blur size
+- Disable live view
+
+## Next Steps
+
+- Learn [AprilTag Detection](./apriltag-detection) for precise localization
+- Create [Custom VisionProcessors](./custom-processors) for advanced needs
+- See [Integration Patterns](./vision-integration) for subsystem architecture

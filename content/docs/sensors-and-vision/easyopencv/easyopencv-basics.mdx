@@ -1,0 +1,261 @@
+---
+title: EasyOpenCV Basics
+description: Setting up and using EasyOpenCV for custom vision pipelines
+icon: Package
+---
+
+## What is EasyOpenCV?
+
+EasyOpenCV is a simplified wrapper around OpenCV, the industry-standard computer vision library. It provides direct access to powerful image processing functions while handling the complexity of integrating with FTC's hardware.
+
+<Callout type="info">
+**Why EasyOpenCV?** It gives you complete control over image processing, making it ideal for custom detection algorithms and complex vision tasks.
+</Callout>
+
+## Installation
+
+### Step 1: Download and Import the Library
+
+Add the EasyOpenCV dependency to your `build.gradle` file:
+
+```kotlin
+repositories {
+    maven { url = 'https://maven.brott.dev/' }
+}
+
+dependencies {
+    implementation 'org.openftc:easyopencv:1.7.1'
+}
+```
+
+### Step 2: Configure build.common.gradle
+
+Remove or comment out specific OpenCV references in `build.common.gradle` if they conflict:
+
+```kotlin
+// Remove or comment out:
+// implementation 'org.opencv:opencv-java:4.x.x'
+```
+
+### Step 3: Gradle Sync
+
+In Android Studio, click **Sync Now** or **File → Sync Project with Gradle Files**.
+
+### Step 4: Copy .so File to Control Hub
+
+For OnBot Java users, copy the `libEasyOpenCV.so` file to your Control Hub:
+1. Connect to Control Hub via ADB or file transfer
+2. Place file in `/sdcard/FIRST/java/libs/`
+
+<Callout type="warn">
+**Note:** This step is only required for OnBot Java. Android Studio users can skip this.
+</Callout>
+
+## Camera Initialization
+
+Camera initialization in EasyOpenCV is more involved than initializing other hardware devices. Here's the complete process:
+
+### Java Implementation
+
+```java
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+
+@Autonomous(name = "Vision Test")
+public class VisionTest extends LinearOpMode {
+    
+    // Declare webcam as class member
+    OpenCvCamera webcam;
+    
+    @Override
+    public void runOpMode() {
+        // Map webcam variable to hardware configuration
+        int cameraMonitorViewId = hardwareMap.appContext
+            .getResources()
+            .getIdentifier("cameraMonitorViewId", "id", 
+                hardwareMap.appContext.getPackageName());
+        
+        // Retrieve webcam from hardware map
+        WebcamName webcamName = hardwareMap.get(WebcamName.class, "Webcam 1");
+        
+        // Create camera instance
+        webcam = OpenCvCameraFactory.getInstance()
+            .createWebcam(webcamName, cameraMonitorViewId);
+        
+        // Set the pipeline (we'll create this next)
+        webcam.setPipeline(new YourPipeline());
+        
+        // Open camera and start streaming
+        webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
+            @Override
+            public void onOpened() {
+                // Start streaming: width, height, rotation
+                webcam.startStreaming(640, 360, OpenCvCameraRotation.UPRIGHT);
+            }
+            
+            @Override
+            public void onError(int errorCode) {
+                telemetry.addData("Error", "Camera failed to open: " + errorCode);
+                telemetry.update();
+            }
+        });
+        
+        waitForStart();
+        
+        // Your autonomous code here
+        while (opModeIsActive()) {
+            // Access pipeline data
+            telemetry.update();
+        }
+    }
+}
+```
+
+### Kotlin Implementation
+
+```kotlin
+package org.firstinspires.ftc.teamcode
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName
+import org.openftc.easyopencv.OpenCvCamera
+import org.openftc.easyopencv.OpenCvCameraFactory
+import org.openftc.easyopencv.OpenCvCameraRotation
+
+@Autonomous(name = "Vision Test")
+class VisionTest : LinearOpMode() {
+    
+    // Declare webcam as class member
+    private lateinit var webcam: OpenCvCamera
+    
+    override fun runOpMode() {
+        // Map webcam variable to hardware configuration
+        val cameraMonitorViewId = hardwareMap.appContext
+            .resources
+            .getIdentifier("cameraMonitorViewId", "id", 
+                hardwareMap.appContext.packageName)
+        
+        // Retrieve webcam from hardware map
+        val webcamName = hardwareMap.get(WebcamName::class.java, "Webcam 1")
+        
+        // Create camera instance
+        webcam = OpenCvCameraFactory.getInstance()
+            .createWebcam(webcamName, cameraMonitorViewId)
+        
+        // Set the pipeline
+        webcam.setPipeline(YourPipeline())
+        
+        // Open camera and start streaming
+        webcam.openCameraDeviceAsync(object : OpenCvCamera.AsyncCameraOpenListener {
+            override fun onOpened() {
+                // Start streaming: width, height, rotation
+                webcam.startStreaming(640, 360, OpenCvCameraRotation.UPRIGHT)
+            }
+            
+            override fun onError(errorCode: Int) {
+                telemetry.addData("Error", "Camera failed to open: $errorCode")
+                telemetry.update()
+            }
+        })
+        
+        waitForStart()
+        
+        // Your autonomous code here
+        while (opModeIsActive()) {
+            // Access pipeline data
+            telemetry.update()
+        }
+    }
+}
+```
+
+## Key Initialization Components
+
+### Camera Monitor View ID
+
+```java
+int cameraMonitorViewId = hardwareMap.appContext
+    .getResources()
+    .getIdentifier("cameraMonitorViewId", "id", 
+        hardwareMap.appContext.getPackageName());
+```
+
+This retrieves the ID of the camera preview view on the Driver Station. It allows you to see the camera feed in real-time.
+
+### Webcam Name Mapping
+
+```java
+WebcamName webcamName = hardwareMap.get(WebcamName.class, "Webcam 1");
+```
+
+This maps to the webcam name configured in your robot configuration file. Make sure the name matches exactly.
+
+### Stream Parameters
+
+```java
+webcam.startStreaming(640, 360, OpenCvCameraRotation.UPRIGHT);
+```
+
+- **Width**: 640 pixels (common resolutions: 320, 640, 1280)
+- **Height**: 360 pixels (common resolutions: 240, 360, 480, 720)
+- **Rotation**: `UPRIGHT`, `SIDEWAYS_LEFT`, `SIDEWAYS_RIGHT`, `UPSIDE_DOWN`
+
+<Callout type="info">
+**Resolution Tips:** Start with 640x360 for good balance between detail and performance. Increase for more detail, decrease for faster processing.
+</Callout>
+
+## Setting the Pipeline
+
+The pipeline defines what your camera looks for in the video feed. You set it before opening the camera:
+
+```java
+webcam.setPipeline(new YourPipeline());
+```
+
+In the next section, we'll learn how to [write custom pipelines](./writing-pipelines) that process frames and detect objects.
+
+## Camera Lifecycle
+
+1. **Declare** - Create class member variable
+2. **Initialize** - Map to hardware and create instance
+3. **Configure** - Set pipeline and parameters
+4. **Open** - Asynchronously open camera device
+5. **Stream** - Start streaming frames to pipeline
+6. **Process** - Pipeline processes each frame
+7. **Close** - Stop streaming when OpMode ends (automatic)
+
+## Troubleshooting
+
+### Camera Not Found
+
+**Error:** `Unable to find webcam "Webcam 1"`  
+**Solution:** Check your robot configuration file. The name must match exactly (including spaces and capitalization).
+
+### Black Screen
+
+**Possible causes:**
+- Camera not receiving power
+- USB connection loose
+- Wrong rotation setting
+- Pipeline returning empty frame
+
+### Poor Performance
+
+If your vision processing is slow:
+- Reduce resolution (try 320x240)
+- Optimize your pipeline (see [Writing Pipelines](./writing-pipelines))
+- Process every 2nd or 3rd frame instead of all frames
+
+## Next Steps
+
+Now that you can initialize a camera:
+- Learn to [write custom pipelines](./writing-pipelines)
+- Set up [EOCV-Sim](./eocv-sim) for faster development
+- Explore [color detection techniques](./color-detection)

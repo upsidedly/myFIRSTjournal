@@ -1,7 +1,7 @@
 ---
 title: Kalman Filter
 description: Reduce sensor noise and improve accuracy with Kalman filtering
-icon: Filter
+icon: Activity
 ---
 
 ## What is a Kalman Filter?
@@ -31,19 +31,53 @@ The Kalman filter operates in two steps that repeat continuously:
 
 ### 1. Prediction Step
 Uses your robot's motion model to predict where it should be:
+
+```math
+\hat{x}_k^- = F \hat{x}_{k-1} + B u_k
 ```
-Predicted Position = Previous Position + (Velocity × Time)
+
+```math
+P_k^- = F P_{k-1} F^T + Q
+```
+
+For simple position estimation:
+
+```math
+\text{Predicted Position} = \text{Previous Position} + (\text{Velocity} \times \Delta t)
 ```
 
 ### 2. Update Step
 Combines the prediction with new sensor measurements:
-```
-New Estimate = Prediction + Kalman Gain × (Measurement - Prediction)
+
+```math
+K_k = \frac{P_k^-}{P_k^- + R}
 ```
 
-The **Kalman Gain** automatically balances:
-- How much to trust the prediction (process noise)
-- How much to trust the sensor (measurement noise)
+```math
+\hat{x}_k = \hat{x}_k^- + K_k (z_k - \hat{x}_k^-)
+```
+
+```math
+P_k = (1 - K_k) P_k^-
+```
+
+Simplified:
+
+```math
+\text{New Estimate} = \text{Prediction} + K (\text{Measurement} - \text{Prediction})
+```
+
+The **Kalman Gain** ($K$) automatically balances:
+- How much to trust the prediction (process noise $Q$)
+- How much to trust the sensor (measurement noise $R$)
+
+Where:
+- $\hat{x}_k$ = State estimate at time $k$
+- $P_k$ = Error covariance (uncertainty)
+- $Q$ = Process noise covariance
+- $R$ = Measurement noise covariance
+- $K_k$ = Kalman gain
+- $z_k$ = Measurement
 
 ### Visual Example
 

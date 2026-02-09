@@ -1,7 +1,12 @@
 {
+    "title": "Sensors and Vision",
     "pages": [
-        "webcam",
-        "color-sensor-v3"
+        "vision-overview",
+        "vision-basics",
+        "easyopencv",
+        "visionportal",
+        "advanced",
+        "hardware"
     ],
     "icon": "Eye"
 }

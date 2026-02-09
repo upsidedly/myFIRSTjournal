@@ -3,6 +3,202 @@ title: Season Breakdown
 icon: Trophy
 ---
 
-This year's game, **DECODE** 🔍
+# FTC DECODE
 
-![Caption text here](/field.png)
+In DECODE™ presented by RTX, 2 ALLIANCES of 2 teams compete to score purple and green ARTIFACTS in their GOAL, build PATTERNS based on a randomized MOTIF, and race back to their BASE before time runs out.
+
+![DECODE Field](/field.png)
+
+## Game Overview
+
+DECODE is played on a 12' × 12' field with 2 ALLIANCES (Red and Blue) competing to score the most points. Each match consists of:
+- **30-second AUTO period** - Robots operate autonomously
+- **2-minute TELEOP period** - Drivers control robots manually
+- **Last 20 seconds** - Focus on returning to BASE
+
+## Game Elements
+
+### ARTIFACTS (Scoring Elements)
+- **24 purple ARTIFACTS** + **12 green ARTIFACTS**
+- 5" polypropylene balls (Gopher ResisDent™)
+- ALLIANCE neutral - either alliance can score any ARTIFACT
+
+### OBELISK
+Triangular prism randomized before each match to display one of 3 **MOTIFS**:
+- **GPP** (Green-Purple-Purple)
+- **PGP** (Purple-Green-Purple)
+- **PPG** (Purple-Purple-Green)
+
+The MOTIF defines what color PATTERN robots try to create on their RAMP.
+
+### GOAL & CLASSIFIER
+- **GOAL**: 3-sided structure with horizontal triangular opening at top
+- **CLASSIFIER**: Attached to GOAL with 3 components:
+  - **SQUARE**: Where ARTIFACTS are scored
+  - **RAMP**: Holds up to 9 CLASSIFIED ARTIFACTS
+  - **GATE**: Retains ARTIFACTS on RAMP (can be opened by robot)
+
+### Other Field Elements
+- **LAUNCH ZONE**: Triangular area where robots can LAUNCH ARTIFACTS
+- **LOADING ZONE**: Where DRIVE TEAM members can handle ARTIFACTS during TELEOP
+- **BASE ZONE**: 18"×18" area for endgame return
+- **DEPOT**: Area adjacent to GOAL where ARTIFACTS can be scored for 1 point each
+
+## Autonomous (30 seconds)
+
+### Scoring Options:
+- **LEAVE** (3 pts): Move robot off LAUNCH LINE
+- **CLASSIFIED ARTIFACT** (3 pts): Score through SQUARE → directly onto RAMP
+- **OVERFLOW ARTIFACT** (1 pt): Score through SQUARE but rolls over existing ARTIFACTS
+- **PATTERN** (2 pts/ARTIFACT): ARTIFACTS on RAMP matching MOTIF color at end of AUTO
+
+<Callout type="info">
+**Vision is Critical!** Use AprilTags on the OBELISK to detect the MOTIF and program autonomous routines accordingly.
+</Callout>
+
+## TeleOp (2 minutes)
+
+### Scoring Options:
+- **CLASSIFIED ARTIFACT** (3 pts): Score through SQUARE → directly onto RAMP
+- **OVERFLOW ARTIFACT** (1 pt): Score through SQUARE but rolls over existing ARTIFACTS
+- **DEPOT ARTIFACT** (1 pt): Place ARTIFACT over DEPOT area
+- **PATTERN** (2 pts/ARTIFACT): ARTIFACTS on RAMP matching MOTIF color at end of TELEOP
+
+### HUMAN PLAYER Actions:
+- During TELEOP, DRIVE TEAM members can handle ARTIFACTS in the LOADING ZONE
+- Load ARTIFACTS into robots, organize ARTIFACTS, retrieve ARTIFACTS from field
+- Maximum 6 ARTIFACTS out of play at once
+
+### GATE Mechanism:
+- Robots can open their GATE to release CLASSIFIED ARTIFACTS from RAMP back onto field
+- Strategic decision: keep PATTERN on RAMP vs. clear space for better scoring
+
+## Endgame (Last 20 seconds)
+
+### Return to BASE:
+- **Partially returned** (5 pts): Some robot support from BASE ZONE tile
+- **Fully returned** (10 pts): All robot support from BASE ZONE tile only
+- **Both robots fully returned** (+10 pt bonus): Extra bonus if both alliance partners fully return
+
+<Callout type="warn">
+**Vertical Expansion Rule:** Robots can only extend above 18" during the last 20 seconds when NOT in a LAUNCH ZONE (up to 38" max).
+</Callout>
+
+## Ranking Points (RP)
+
+Teams earn RANKING POINTS to improve qualification ranking:
+
+| RP Type | Requirement (Qualification) | Requirement (Other) |
+|---------|----------------------------|---------------------|
+| **MOVEMENT RP** | LEAVE + BASE points ≥ 21 | ≥ 16 |
+| **GOAL RP** | ARTIFACTS scored through SQUARE ≥ 42 | ≥ 36 |
+| **PATTERN RP** | PATTERN points ≥ 22 | ≥ 18 |
+| **WIN** | Win match | Win match |
+| **TIE** | Tie match | Tie match |
+
+## Strategy Tips
+
+### Early Season:
+- **Reliable AUTO** - Consistent LEAVE + a few CLASSIFIED ARTIFACTS wins matches
+- **MOTIF Detection** - Use AprilTags to detect OBELISK orientation
+- **Basic PATTERN** - Score 3-6 ARTIFACTS matching MOTIF for easy RP
+- **Partial BASE** - Even partial return (5pts) adds up
+
+### Mid Season:
+- **Full BASE Return** - 10 points is huge, aim for both robots (20+ pts total)
+- **DEPOT Strategy** - Quick 1-point scores add up when cycling fast
+- **GATE Manipulation** - Open gate strategically to clear bad PATTERNS
+- **Fast Cycling** - Maximize CLASSIFIED ARTIFACTS (3pts each)
+
+### Late Season:
+- **PATTERN Optimization** - Perfect 9-ARTIFACT PATTERN = 18 points
+- **Alliance Coordination** - Both robots fully returned = 10pt bonus
+- **RP Focus** - All 3 RPs (MOVEMENT, GOAL, PATTERN) in one match
+- **Defensive Play** - Protect your RAMP, contest opponent LOADING ZONE
+
+## Common Mechanisms
+
+### Intake Systems:
+- **Over-the-Bumper Intake** - Flexible rollers to grab ARTIFACTS from floor
+- **Side Intake** - Wheels/belts on side of robot for wall collection
+- **Passive Funnel** - Guide ARTIFACTS into collection area
+
+### Launcher/Scoring:
+- **Flywheel Launcher** - High-speed wheels to LAUNCH ARTIFACTS into GOAL
+- **Catapult/Pusher** - Mechanical launching for consistent trajectories
+- **Direct Placement** - Extend over GOAL and drop ARTIFACTS through SQUARE
+
+### GATE Mechanism:
+- **Servo Arm** - Push GATE lever down to open
+- **Linear Slide** - Extend to reach GATE from distance
+- **Don't grab/pull** - Rules prohibit grasping or pulling GATE
+
+### Endgame/BASE:
+- **Low Center of Gravity** - Stable design to stay fully on BASE ZONE
+- **Alignment Guides** - Visual markers to help drivers position accurately
+- **Fast Return** - Quick path from scoring area to BASE
+
+## Programming Considerations
+
+### Vision Processing:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+// Detect OBELISK MOTIF using AprilTags
+int motifID = detectAprilTag(); // Returns 21 (GPP), 22 (PGP), or 23 (PPG)
+
+if (motifID == 21) { // GPP
+    targetColors = new String[]{"G", "P", "P", "G", "P", "P", "G", "P", "P"};
+} else if (motifID == 22) { // PGP
+    targetColors = new String[]{"P", "G", "P", "P", "G", "P", "P", "G", "P"};
+} else { // PPG
+    targetColors = new String[]{"P", "P", "G", "P", "P", "G", "P", "P", "G"};
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+// Detect OBELISK MOTIF using AprilTags
+val motifID = detectAprilTag() // Returns 21 (GPP), 22 (PGP), or 23 (PPG)
+
+val targetColors = when (motifID) {
+    21 -> arrayOf("G", "P", "P", "G", "P", "P", "G", "P", "P") // GPP
+    22 -> arrayOf("P", "G", "P", "P", "G", "P", "P", "G", "P") // PGP
+    else -> arrayOf("P", "P", "G", "P", "P", "G", "P", "P", "G") // PPG
+}
+```
+</Tab>
+</Tabs>
+
+### Autonomous Routines:
+1. **Detect MOTIF** - Use AprilTag vision to identify OBELISK orientation
+2. **LEAVE Launch Line** - Move off starting position (3 pts)
+3. **Score Pre-loaded ARTIFACTS** - Start with up to 3 ARTIFACTS
+4. **Build PATTERN** - Score ARTIFACTS matching MOTIF colors
+5. **Collect Additional ARTIFACTS** - From spike marks or other positions
+
+### TeleOp Features:
+- **MOTIF Display** - Show drivers current MOTIF on Driver Station
+- **ARTIFACT Counter** - Track how many CLASSIFIED vs OVERFLOW scored
+- **Endgame Timer** - Alert drivers at 20 seconds for BASE return
+
+## Game Manual Resources
+
+<Callout type="info">
+For complete rules, refer to the [Official Game Manual](https://ftc-resources.firstinspires.org/ftc/game/manual). This guide is a summary.
+</Callout>
+
+### Key Resources:
+- [Game Animation](https://youtu.be/LCqWA6gSCXA) - Watch DECODE reveal
+- [Field Tour](https://youtu.be/lW0NzkG2zAo) - Detailed walkthrough
+- [Game Manual](https://ftc-resources.firstinspires.org/ftc/game/manual) - Complete rules
+
+## Next Steps
+
+Ready to build your DECODE robot? Check out:
+- [Vision Documentation](./sensors-and-vision/vision-overview) - AprilTag detection for MOTIF
+- [Control Systems](./control-systems) - Flywheel PID for launcher consistency
+- [Libraries](./libraries) - FTCLib, RoadRunner for advanced control
+
+Good luck this season! 🚀

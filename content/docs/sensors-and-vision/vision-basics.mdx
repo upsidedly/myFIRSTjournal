@@ -1,0 +1,154 @@
+---
+title: Vision Basics
+description: Fundamental concepts of image processing for FTC
+icon: BookOpen
+---
+
+## How Cameras Work in FTC
+
+Your robot's camera captures frames at a specific resolution (typically 640x480 or 1280x720) and frame rate. Each frame is a 2D array of pixels, where each pixel contains color information.
+
+## Color Spaces
+
+Different color spaces represent colors in different ways. Understanding them is crucial for effective color detection.
+
+### RGB (Red, Green, Blue)
+
+The most common color space. Each pixel has three values (0-255) representing red, green, and blue intensity.
+
+```java
+// RGB values
+int red = 255;
+int green = 0;
+int blue = 0;
+// Result: Pure red color
+```
+
+**Pros:** Intuitive, widely used  
+**Cons:** Not ideal for color detection due to lighting sensitivity
+
+### HSV (Hue, Saturation, Value)
+
+HSV separates color information (hue) from brightness (value) and intensity (saturation).
+
+- **Hue (0-179 in OpenCV)** - The actual color (red, green, blue, etc.)
+- **Saturation (0-255)** - How "pure" the color is
+- **Value (0-255)** - How bright the color is
+
+```java
+// HSV ranges for detecting red
+Scalar lowerRed = new Scalar(0, 100, 100);
+Scalar upperRed = new Scalar(10, 255, 255);
+```
+
+**Pros:** Much better for color detection, lighting-independent  
+**Cons:** Slightly less intuitive
+
+### YCrCb (Luma, Chroma Red, Chroma Blue)
+
+YCrCb separates brightness (Y) from color information (Cr and Cb channels).
+
+- **Y (0-255)** - Brightness/luminance
+- **Cr (0-255)** - Red chrominance
+- **Cb (0-255)** - Blue chrominance
+
+```java
+// YCrCb is great for detecting specific alliance colors
+Scalar lowerBlue = new Scalar(0, 0, 150);
+Scalar upperBlue = new Scalar(255, 120, 255);
+```
+
+**Pros:** Excellent for FTC alliance color detection  
+**Cons:** Less intuitive than HSV
+
+## Common Vision Techniques
+
+### Thresholding
+
+Convert an image to binary (black and white) based on color ranges. Pixels within range become white, others become black.
+
+```java
+// Create a mask showing only red pixels
+Core.inRange(inputMat, lowerBound, upperBound, mask);
+```
+
+### Contour Detection
+
+Find the boundaries of white regions in a binary image. Useful for identifying game elements.
+
+```java
+List<MatOfPoint> contours = new ArrayList<>();
+Imgproc.findContours(mask, contours, hierarchy, 
+    Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+```
+
+### Bounding Boxes
+
+Draw rectangles around detected objects to determine their position and size.
+
+```java
+Rect boundingRect = Imgproc.boundingRect(contour);
+// Now you know: x, y, width, height
+```
+
+### Region of Interest (ROI)
+
+Analyze only specific parts of the image to improve performance and reduce false positives.
+
+```java
+Mat leftRegion = inputMat.submat(
+    new Rect(0, 240, 213, 240) // x, y, width, height
+);
+```
+
+## Performance Considerations
+
+### Resolution vs Speed
+
+- **Lower resolution (320x240)** - Faster processing, less detail
+- **Higher resolution (1280x720)** - More detail, slower processing
+
+Choose based on your needs. Most teams use 640x480 or 640x360 as a good balance.
+
+### Frame Rate
+
+- **Higher FPS** - More responsive, more CPU usage
+- **Lower FPS** - Less responsive, less CPU usage
+
+Typical FTC cameras run at 30 FPS, but you may process every 2nd or 3rd frame to save resources.
+
+### Processing Location
+
+- **OnBot Java/Kotlin** - Runs on Control Hub, simpler deployment
+- **Android Studio** - Runs on Robot Controller phone, more power but deprecated
+
+<Callout type="warn">
+**Important:** Vision processing can be CPU-intensive. Always test your pipeline's performance to ensure it doesn't slow down your control loop.
+</Callout>
+
+## Testing Your Vision Code
+
+### EOCV-Sim
+
+EOCV-Sim is an offline simulator where you can:
+- Test pipelines without a robot
+- Use images or webcam input
+- Tune parameters quickly
+- See processing results in real-time
+
+See [EOCV-Sim Setup](./eocv-sim) for details.
+
+### FTC Dashboard
+
+FTC Dashboard allows you to:
+- Stream camera feed over WiFi
+- Adjust parameters in real-time
+- View telemetry alongside video
+- Save tuned values back to code
+
+## Next Steps
+
+Now that you understand the basics:
+- Learn [EasyOpenCV setup](./easyopencv-basics) for custom pipelines
+- Or jump to [VisionPortal](./vision-portal) for quick implementation
+- Explore [EOCV-Sim](./eocv-sim) for offline testing

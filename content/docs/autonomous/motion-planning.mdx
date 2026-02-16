@@ -6,7 +6,7 @@ icon: Route
 
 ## What is Motion Planning?
 
-**Motion planning** is the process of deciding **what path your robot should take** to reach its destination. It's the difference between blindly driving forward and intelligently navigating around obstacles, optimizing speed, and coordinating with game strategy.
+**Motion planning** is the process of deciding **what path your robot should take** to reach its destination. It's the difference between blindly driving forward and intelligently navigating the field, optimizing speed, and coordinating with game strategy.
 
 Think of it like GPS navigation for your car — it doesn't just go in a straight line, it plans the best route considering roads, traffic, and turns.
 
@@ -15,12 +15,10 @@ Think of it like GPS navigation for your car — it doesn't just go in a straigh
 Without motion planning:
 - Robot crashes into field elements
 - Takes inefficient paths (wastes time)
-- Can't handle dynamic obstacles
 - Movements look jerky and unprofessional
 
 With motion planning:
 - Smooth, efficient paths
-- Avoids obstacles automatically
 - Optimized for speed and precision
 - Looks professional and controlled
 
@@ -48,7 +46,7 @@ public class WaypointAuto extends LinearOpMode {
         // Define waypoints (x, y, heading)
         Pose2D[] waypoints = {
             new Pose2D(0, 0, 0),      // Start
-            new Pose2D(24, 12, 45),   // Avoid obstacle
+            new Pose2D(24, 12, 45),   // Intermediate point
             new Pose2D(48, 24, 90),   // Scoring position
             new Pose2D(60, 36, 180)   // Park
         };
@@ -93,7 +91,7 @@ class WaypointAuto : LinearOpMode() {
         // Define waypoints (x, y, heading)
         val waypoints = listOf(
             Pose2D(0.0, 0.0, 0.0),      // Start
-            Pose2D(24.0, 12.0, 45.0),   // Avoid obstacle
+            Pose2D(24.0, 12.0, 45.0),   // Intermediate point
             Pose2D(48.0, 24.0, 90.0),   // Scoring position
             Pose2D(60.0, 36.0, 180.0)   // Park
         )
@@ -349,68 +347,6 @@ class StateMachineAuto : LinearOpMode() {
 - Requires careful state transition logic
 
 **Best for:** Complex autonomous with vision, sensor-driven decisions
-
-## Obstacle Avoidance
-
-Advanced motion planning includes **avoiding obstacles** on the field.
-
-### Simple Avoidance (Predefined Waypoints)
-
-Plan paths around known obstacles (field elements):
-
-```java
-// Bad: drives through OBELISK
-goToPoint(48, 48);
-
-// Good: waypoints avoid OBELISK
-goToPoint(24, 20); // Go around
-goToPoint(48, 48); // Then to target
-```
-
-### Dynamic Avoidance (Sensor-Based)
-
-Use distance sensors or vision to detect unexpected obstacles and reroute:
-
-<Tabs items={['Java', 'Kotlin']}>
-<Tab value="Java">
-```java
-public void driveWithAvoidance(double targetX, double targetY) {
-    while (opModeIsActive()) {
-        odometry.update();
-        
-        double distance = distanceSensor.getDistance(DistanceUnit.CM);
-        
-        if (distance < 15) {
-            // Obstacle detected! Strafe left
-            drivetrain.drive(0, -0.3, 0);
-        } else {
-            // Clear path, navigate normally
-            navigateToPoint(targetX, targetY);
-        }
-    }
-}
-```
-</Tab>
-<Tab value="Kotlin">
-```kotlin
-fun driveWithAvoidance(targetX: Double, targetY: Double) {
-    while (opModeIsActive()) {
-        odometry.update()
-        
-        val distance = distanceSensor.getDistance(DistanceUnit.CM)
-        
-        if (distance < 15) {
-            // Obstacle detected! Strafe left
-            drivetrain.drive(0.0, -0.3, 0.0)
-        } else {
-            // Clear path, navigate normally
-            navigateToPoint(targetX, targetY)
-        }
-    }
-}
-```
-</Tab>
-</Tabs>
 
 ## Path Planning Tips
 

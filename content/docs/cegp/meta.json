@@ -1,6 +1,10 @@
 {
     "pages": [
-        "formatting"
+        "index",
+        "naming-conventions",
+        "code-organization",
+        "comments",
+        "team-collaboration"
     ],
-    "icon": "Target"
+    "icon": "Code"
 }

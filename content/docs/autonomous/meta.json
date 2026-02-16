@@ -1,0 +1,11 @@
+{
+    "pages": [
+        "index",
+        "time-vs-encoder",
+        "odometry",
+        "motion-planning",
+        "pure-pursuit",
+        "sensor-fusion"
+    ],
+    "icon": "Navigation"
+}

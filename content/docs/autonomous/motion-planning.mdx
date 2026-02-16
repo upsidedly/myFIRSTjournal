@@ -1,0 +1,485 @@
+---
+title: Motion Planning
+description: Choose the right path for your robot to navigate the field
+icon: Route
+---
+
+## What is Motion Planning?
+
+**Motion planning** is the process of deciding **what path your robot should take** to reach its destination. It's the difference between blindly driving forward and intelligently navigating around obstacles, optimizing speed, and coordinating with game strategy.
+
+Think of it like GPS navigation for your car — it doesn't just go in a straight line, it plans the best route considering roads, traffic, and turns.
+
+## Why Motion Planning Matters
+
+Without motion planning:
+- Robot crashes into field elements
+- Takes inefficient paths (wastes time)
+- Can't handle dynamic obstacles
+- Movements look jerky and unprofessional
+
+With motion planning:
+- Smooth, efficient paths
+- Avoids obstacles automatically
+- Optimized for speed and precision
+- Looks professional and controlled
+
+## Types of Motion Planning
+
+### 1. Waypoint-Based Planning
+
+The robot follows a sequence of **waypoints** (specific coordinates) to reach the goal.
+
+**How it works:**
+1. Define key positions on the field
+2. Robot navigates to each waypoint in sequence
+3. Uses odometry to track progress
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+@Autonomous(name = "Waypoint Example")
+public class WaypointAuto extends LinearOpMode {
+    
+    @Override
+    public void runOpMode() {
+        Odometry odometry = new Odometry(/* setup */);
+        
+        // Define waypoints (x, y, heading)
+        Pose2D[] waypoints = {
+            new Pose2D(0, 0, 0),      // Start
+            new Pose2D(24, 12, 45),   // Avoid obstacle
+            new Pose2D(48, 24, 90),   // Scoring position
+            new Pose2D(60, 36, 180)   // Park
+        };
+        
+        waitForStart();
+        
+        for (Pose2D waypoint : waypoints) {
+            goToWaypoint(waypoint, odometry);
+        }
+    }
+    
+    private void goToWaypoint(Pose2D target, Odometry odom) {
+        while (opModeIsActive()) {
+            odom.update();
+            
+            double errorX = target.x - odom.getX();
+            double errorY = target.y - odom.getY();
+            double distance = Math.hypot(errorX, errorY);
+            
+            if (distance < 2.0) break; // Close enough
+            
+            // Drive toward waypoint
+            double angleToTarget = Math.atan2(errorY, errorX);
+            double forward = Math.cos(angleToTarget - odom.getHeading()) * 0.5;
+            double strafe = Math.sin(angleToTarget - odom.getHeading()) * 0.5;
+            
+            drivetrain.drive(forward, strafe, 0);
+        }
+        drivetrain.stop();
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+@Autonomous(name = "Waypoint Example")
+class WaypointAuto : LinearOpMode() {
+    
+    override fun runOpMode() {
+        val odometry = Odometry(/* setup */)
+        
+        // Define waypoints (x, y, heading)
+        val waypoints = listOf(
+            Pose2D(0.0, 0.0, 0.0),      // Start
+            Pose2D(24.0, 12.0, 45.0),   // Avoid obstacle
+            Pose2D(48.0, 24.0, 90.0),   // Scoring position
+            Pose2D(60.0, 36.0, 180.0)   // Park
+        )
+        
+        waitForStart()
+        
+        for (waypoint in waypoints) {
+            goToWaypoint(waypoint, odometry)
+        }
+    }
+    
+    private fun goToWaypoint(target: Pose2D, odom: Odometry) {
+        while (opModeIsActive()) {
+            odom.update()
+            
+            val errorX = target.x - odom.x
+            val errorY = target.y - odom.y
+            val distance = hypot(errorX, errorY)
+            
+            if (distance < 2.0) return // Close enough
+            
+            // Drive toward waypoint
+            val angleToTarget = atan2(errorY, errorX)
+            val forward = cos(angleToTarget - odom.heading) * 0.5
+            val strafe = sin(angleToTarget - odom.heading) * 0.5
+            
+            drivetrain.drive(forward, strafe, 0.0)
+        }
+        drivetrain.stop()
+    }
+}
+```
+</Tab>
+</Tabs>
+
+**Pros:**
+- Simple to understand
+- Easy to debug (telemetry shows current waypoint)
+- Works with any drivetrain type
+
+**Cons:**
+- Robot stops at each waypoint (inefficient)
+- Sharp turns between points
+- Not optimized for speed
+
+**Best for:** Beginner teams, simple autonomous routines
+
+### 2. Spline-Based Planning (Bézier Curves)
+
+Uses **Bézier curves** to create smooth, continuous paths without stopping at waypoints.
+
+**How it works:**
+1. Define control points that shape the curve
+2. Generate a smooth path through those points
+3. Robot follows the curve continuously
+
+Libraries like **Pedro Pathing** and **Road Runner** use this approach.
+
+**Example using Pedro Pathing:**
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+@Autonomous(name = "Spline Example")
+public class SplineAuto extends LinearOpMode {
+    
+    @Override
+    public void runOpMode() {
+        Follower follower = new Follower(hardwareMap);
+        
+        // Create smooth path with Bézier curves
+        Path scoringPath = new Path(
+            new BezierLine(
+                new Point(0, 0, Point.CARTESIAN),
+                new Point(48, 24, Point.CARTESIAN)
+            )
+        );
+        scoringPath.setConstantHeadingInterpolation(Math.toRadians(90));
+        
+        waitForStart();
+        
+        follower.followPath(scoringPath);
+        
+        while (opModeIsActive() && follower.isBusy()) {
+            follower.update();
+        }
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+@Autonomous(name = "Spline Example")
+class SplineAuto : LinearOpMode() {
+    
+    override fun runOpMode() {
+        val follower = Follower(hardwareMap)
+        
+        // Create smooth path with Bézier curves
+        val scoringPath = Path(
+            BezierLine(
+                Point(0.0, 0.0, Point.CARTESIAN),
+                Point(48.0, 24.0, Point.CARTESIAN)
+            )
+        ).apply {
+            setConstantHeadingInterpolation(Math.toRadians(90.0))
+        }
+        
+        waitForStart()
+        
+        follower.followPath(scoringPath)
+        
+        while (opModeIsActive() && follower.isBusy()) {
+            follower.update()
+        }
+    }
+}
+```
+</Tab>
+</Tabs>
+
+**Pros:**
+- Smooth, continuous movement
+- No stopping between waypoints
+- Professional-looking paths
+- Faster autonomous times
+
+**Cons:**
+- More complex to tune
+- Requires path following library
+- Harder to debug
+
+**Best for:** Competitive teams, speed-optimized autonomous
+
+### 3. Pure Pursuit
+
+A **path following algorithm** that "chases" a look-ahead point on the path. See the dedicated **[Pure Pursuit](/docs/autonomous/pure-pursuit)** page for details.
+
+**Best for:** Smooth curved paths, mecanum/X-drive robots
+
+### 4. State Machine Planning
+
+Combines **decision-making** with path planning. Robot changes behavior based on game state or sensor feedback.
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+public enum AutoState {
+    DETECT_MOTIF,
+    DRIVE_TO_OBELISK,
+    SCORE_ARTIFACT,
+    PARK
+}
+
+@Autonomous(name = "State Machine Auto")
+public class StateMachineAuto extends LinearOpMode {
+    private AutoState currentState = AutoState.DETECT_MOTIF;
+    
+    @Override
+    public void runOpMode() {
+        waitForStart();
+        
+        while (opModeIsActive()) {
+            switch (currentState) {
+                case DETECT_MOTIF:
+                    if (detectMotifWithVision()) {
+                        currentState = AutoState.DRIVE_TO_OBELISK;
+                    }
+                    break;
+                    
+                case DRIVE_TO_OBELISK:
+                    if (driveToPosition(24, 36)) {
+                        currentState = AutoState.SCORE_ARTIFACT;
+                    }
+                    break;
+                    
+                case SCORE_ARTIFACT:
+                    if (scoreArtifact()) {
+                        currentState = AutoState.PARK;
+                    }
+                    break;
+                    
+                case PARK:
+                    driveToPosition(60, 60);
+                    break;
+            }
+            
+            telemetry.addData("State", currentState);
+            telemetry.update();
+        }
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+enum class AutoState {
+    DETECT_MOTIF,
+    DRIVE_TO_OBELISK,
+    SCORE_ARTIFACT,
+    PARK
+}
+
+@Autonomous(name = "State Machine Auto")
+class StateMachineAuto : LinearOpMode() {
+    private var currentState = AutoState.DETECT_MOTIF
+    
+    override fun runOpMode() {
+        waitForStart()
+        
+        while (opModeIsActive()) {
+            when (currentState) {
+                AutoState.DETECT_MOTIF -> {
+                    if (detectMotifWithVision()) {
+                        currentState = AutoState.DRIVE_TO_OBELISK
+                    }
+                }
+                
+                AutoState.DRIVE_TO_OBELISK -> {
+                    if (driveToPosition(24.0, 36.0)) {
+                        currentState = AutoState.SCORE_ARTIFACT
+                    }
+                }
+                
+                AutoState.SCORE_ARTIFACT -> {
+                    if (scoreArtifact()) {
+                        currentState = AutoState.PARK
+                    }
+                }
+                
+                AutoState.PARK -> {
+                    driveToPosition(60.0, 60.0)
+                }
+            }
+            
+            telemetry.addData("State", currentState)
+            telemetry.update()
+        }
+    }
+}
+```
+</Tab>
+</Tabs>
+
+**Pros:**
+- Clear structure (easy to understand)
+- Handles complex decision trees
+- Easy to modify and debug
+- Adapts to sensor feedback
+
+**Cons:**
+- Can get complex with many states
+- Requires careful state transition logic
+
+**Best for:** Complex autonomous with vision, sensor-driven decisions
+
+## Obstacle Avoidance
+
+Advanced motion planning includes **avoiding obstacles** on the field.
+
+### Simple Avoidance (Predefined Waypoints)
+
+Plan paths around known obstacles (field elements):
+
+```java
+// Bad: drives through OBELISK
+goToPoint(48, 48);
+
+// Good: waypoints avoid OBELISK
+goToPoint(24, 20); // Go around
+goToPoint(48, 48); // Then to target
+```
+
+### Dynamic Avoidance (Sensor-Based)
+
+Use distance sensors or vision to detect unexpected obstacles and reroute:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+public void driveWithAvoidance(double targetX, double targetY) {
+    while (opModeIsActive()) {
+        odometry.update();
+        
+        double distance = distanceSensor.getDistance(DistanceUnit.CM);
+        
+        if (distance < 15) {
+            // Obstacle detected! Strafe left
+            drivetrain.drive(0, -0.3, 0);
+        } else {
+            // Clear path, navigate normally
+            navigateToPoint(targetX, targetY);
+        }
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+fun driveWithAvoidance(targetX: Double, targetY: Double) {
+    while (opModeIsActive()) {
+        odometry.update()
+        
+        val distance = distanceSensor.getDistance(DistanceUnit.CM)
+        
+        if (distance < 15) {
+            // Obstacle detected! Strafe left
+            drivetrain.drive(0.0, -0.3, 0.0)
+        } else {
+            // Clear path, navigate normally
+            navigateToPoint(targetX, targetY)
+        }
+    }
+}
+```
+</Tab>
+</Tabs>
+
+## Path Planning Tips
+
+### 1. Start Simple
+
+Don't jump to complex splines on day one:
+- **Week 1-2:** Drive straight, turn, drive straight
+- **Week 3-4:** Waypoint-based navigation
+- **Week 5+:** Splines and advanced following
+
+### 2. Visualize Your Paths
+
+Use **FTC Dashboard** or **Pedro Pathing GUI** to draw paths on a field overlay:
+- See where robot will go
+- Catch path errors before running code
+- Tune curves visually
+
+### 3. Account for Robot Size
+
+Your robot has **width and length** — plan paths that keep the robot fully inside legal zones!
+
+```java
+// Bad: drives too close to wall
+goToPoint(72, 36); // Robot will hit wall!
+
+// Good: accounts for 18" robot width
+goToPoint(63, 36); // 9" clearance from wall
+```
+
+### 4. Optimize for Time
+
+**Fastest path ≠ shortest path**
+
+Consider:
+- Acceleration/deceleration time
+- Sharp turns slow you down
+- Smooth curves maintain speed
+
+### 5. Plan for Failure
+
+Always have a **backup plan**:
+- If vision fails, use encoder-based fallback
+- If path is blocked, switch to alternate route
+- If mechanism jams, skip task and continue
+
+## Comparison of Planning Methods
+
+| Method | Speed | Complexity | Accuracy | Best Use Case |
+|--------|-------|------------|----------|---------------|
+| **Waypoints** | ⭐⭐ | ⭐ | ⭐⭐⭐ | Simple autonomous, beginners |
+| **Splines** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Competitive teams, fast cycles |
+| **Pure Pursuit** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | Curved paths, mecanum drive |
+| **State Machine** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Complex logic, vision-based |
+
+## Common Mistakes
+
+**Planning paths without testing** — Always test on actual field  
+**Ignoring robot dimensions** — Account for bumpers and mechanisms  
+**No backup routes** — Vision/sensor failure should have fallback  
+**Over-optimizing early season** — Get reliable first, then optimize  
+**Forgetting alliance color** — Red and blue sides need different paths  
+
+## Next Steps
+
+Ready to implement smooth path following? Learn **[Pure Pursuit](/docs/autonomous/pure-pursuit)** for curved paths, or explore **[Sensor Fusion](/docs/autonomous/sensor-fusion)** to improve localization accuracy!
+
+## Additional Resources
+
+- [Pedro Pathing Documentation](https://pedropathing.com)
+- [Road Runner Documentation](https://acme-robotics.gitbook.io/road-runner/)
+- [gm0: Motion Planning](https://gm0.org/en/latest/docs/software/concepts/control-loops.html)
+- [FTC Dashboard for Path Visualization](https://acmerobotics.github.io/ftc-dashboard/)

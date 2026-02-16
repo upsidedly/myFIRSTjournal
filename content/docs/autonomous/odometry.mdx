@@ -1,0 +1,521 @@
+---
+title: Odometry
+description: Track your robot's position on the field with dead reckoning
+icon: MapPin
+---
+
+## What is Odometry?
+
+**Odometry** is the use of sensors to estimate your robot's **position** (x, y) and **heading** (angle) on the field. Instead of just knowing "I drove 24 inches forward," odometry lets you say "I'm at position (36, 48) facing 90 degrees."
+
+Think of it like GPS for your robot — except instead of satellites, you're using wheel encoders and sensors to track movement.
+
+![FTC Field Coordinate System](/coordinates.png)
+
+### Why Odometry Matters
+
+Without odometry:
+- Robot doesn't know absolute position
+- Can't navigate to specific coordinates
+- Errors accumulate with no correction
+- Complex paths are nearly impossible
+
+With odometry:
+- Robot tracks (x, y, θ) continuously
+- Can navigate to any field coordinate
+- Errors can be corrected with vision (sensor fusion)
+- Enables advanced path following algorithms
+
+## How Odometry Works
+
+Odometry continuously calculates position using **dead reckoning**:
+
+1. **Measure wheel movement** using encoders
+2. **Calculate distance traveled** in each direction
+3. **Update robot position** based on movement
+4. **Repeat every loop** (50-100 times per second)
+
+The math tracks how far the robot moved left/right and forward/backward, then updates the global position estimate.
+
+## Types of Odometry
+
+### 1. Drive Encoder Odometry (2-Wheel)
+
+Uses the **drive motor encoders** to track movement.
+
+**Setup:**
+- Left drive encoder
+- Right drive encoder
+- (Optional) IMU for heading
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+public class TwoWheelOdometry {
+    private DcMotor leftMotor, rightMotor;
+    private double x = 0, y = 0, heading = 0;
+    private int lastLeftPos = 0, lastRightPos = 0;
+    
+    private static final double COUNTS_PER_INCH = 50.0;
+    private static final double TRACK_WIDTH = 14.0; // inches between wheels
+    
+    public void update() {
+        // Read current encoder positions
+        int leftPos = leftMotor.getCurrentPosition();
+        int rightPos = rightMotor.getCurrentPosition();
+        
+        // Calculate change since last update
+        double leftDelta = (leftPos - lastLeftPos) / COUNTS_PER_INCH;
+        double rightDelta = (rightPos - lastRightPos) / COUNTS_PER_INCH;
+        
+        // Update last positions
+        lastLeftPos = leftPos;
+        lastRightPos = rightPos;
+        
+        // Calculate forward movement and heading change
+        double centerDelta = (leftDelta + rightDelta) / 2.0;
+        double headingDelta = (rightDelta - leftDelta) / TRACK_WIDTH;
+        
+        // Update heading
+        heading += headingDelta;
+        
+        // Update position (using average heading)
+        double avgHeading = heading - (headingDelta / 2.0);
+        x += centerDelta * Math.cos(avgHeading);
+        y += centerDelta * Math.sin(avgHeading);
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+class TwoWheelOdometry(
+    private val leftMotor: DcMotor,
+    private val rightMotor: DcMotor
+) {
+    var x = 0.0
+        private set
+    var y = 0.0
+        private set
+    var heading = 0.0
+        private set
+    
+    private var lastLeftPos = 0
+    private var lastRightPos = 0
+    
+    companion object {
+        const val COUNTS_PER_INCH = 50.0
+        const val TRACK_WIDTH = 14.0 // inches between wheels
+    }
+    
+    fun update() {
+        // Read current encoder positions
+        val leftPos = leftMotor.currentPosition
+        val rightPos = rightMotor.currentPosition
+        
+        // Calculate change since last update
+        val leftDelta = (leftPos - lastLeftPos) / COUNTS_PER_INCH
+        val rightDelta = (rightPos - lastRightPos) / COUNTS_PER_INCH
+        
+        // Update last positions
+        lastLeftPos = leftPos
+        lastRightPos = rightPos
+        
+        // Calculate forward movement and heading change
+        val centerDelta = (leftDelta + rightDelta) / 2.0
+        val headingDelta = (rightDelta - leftDelta) / TRACK_WIDTH
+        
+        // Update heading
+        heading += headingDelta
+        
+        // Update position (using average heading)
+        val avgHeading = heading - (headingDelta / 2.0)
+        x += centerDelta * cos(avgHeading)
+        y += centerDelta * sin(avgHeading)
+    }
+}
+```
+</Tab>
+</Tabs>
+
+**Pros:**
+- No extra hardware needed
+- Simple to implement
+- Good for basic autonomous
+
+**Cons:**
+- Wheel slip causes major errors
+- Strafe movement not tracked (mecanum/X-drive)
+- Accuracy degrades over time
+
+### 2. Three-Wheel Odometry (Dead Wheels)
+
+Uses **three dedicated tracking wheels** (also called "dead wheels" or "odometry pods") that spin freely independent of drivetrain motors.
+
+**Setup:**
+- Two parallel wheels (left and right tracking)
+- One perpendicular wheel (strafe tracking)
+- All connected to encoder ports
+
+![Three-Wheel Odometry Setup](/3-wheel.png)
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+public class ThreeWheelOdometry {
+    private DcMotor leftEncoder, rightEncoder, strafeEncoder;
+    
+    private double x = 0, y = 0, heading = 0;
+    private int lastLeft = 0, lastRight = 0, lastStrafe = 0;
+    
+    private static final double COUNTS_PER_INCH = 8192.0 / (35.0 * Math.PI);
+    private static final double TRACK_WIDTH = 12.5; // Distance between parallel wheels
+    private static final double CENTER_OFFSET = 6.0; // Strafe wheel offset from center
+    
+    public void update() {
+        // Read encoder positions
+        int left = leftEncoder.getCurrentPosition();
+        int right = rightEncoder.getCurrentPosition();
+        int strafe = strafeEncoder.getCurrentPosition();
+        
+        // Calculate deltas
+        double leftDelta = (left - lastLeft) / COUNTS_PER_INCH;
+        double rightDelta = (right - lastRight) / COUNTS_PER_INCH;
+        double strafeDelta = (strafe - lastStrafe) / COUNTS_PER_INCH;
+        
+        // Update last positions
+        lastLeft = left;
+        lastRight = right;
+        lastStrafe = strafe;
+        
+        // Calculate heading change
+        double headingDelta = (leftDelta - rightDelta) / TRACK_WIDTH;
+        heading += headingDelta;
+        
+        // Calculate local movement (robot-centric)
+        double forwardDelta = (leftDelta + rightDelta) / 2.0;
+        double strafeDeltaAdjusted = strafeDelta - (CENTER_OFFSET * headingDelta);
+        
+        // Convert to global coordinates (field-centric)
+        double avgHeading = heading - (headingDelta / 2.0);
+        x += forwardDelta * Math.cos(avgHeading) - strafeDeltaAdjusted * Math.sin(avgHeading);
+        y += forwardDelta * Math.sin(avgHeading) + strafeDeltaAdjusted * Math.cos(avgHeading);
+    }
+    
+    public double getX() { return x; }
+    public double getY() { return y; }
+    public double getHeading() { return Math.toDegrees(heading); }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+class ThreeWheelOdometry(
+    private val leftEncoder: DcMotor,
+    private val rightEncoder: DcMotor,
+    private val strafeEncoder: DcMotor
+) {
+    var x = 0.0
+        private set
+    var y = 0.0
+        private set
+    var heading = 0.0
+        private set
+    
+    private var lastLeft = 0
+    private var lastRight = 0
+    private var lastStrafe = 0
+    
+    companion object {
+        const val COUNTS_PER_INCH = 8192.0 / (35.0 * PI)
+        const val TRACK_WIDTH = 12.5 // Distance between parallel wheels
+        const val CENTER_OFFSET = 6.0 // Strafe wheel offset from center
+    }
+    
+    fun update() {
+        // Read encoder positions
+        val left = leftEncoder.currentPosition
+        val right = rightEncoder.currentPosition
+        val strafe = strafeEncoder.currentPosition
+        
+        // Calculate deltas
+        val leftDelta = (left - lastLeft) / COUNTS_PER_INCH
+        val rightDelta = (right - lastRight) / COUNTS_PER_INCH
+        val strafeDelta = (strafe - lastStrafe) / COUNTS_PER_INCH
+        
+        // Update last positions
+        lastLeft = left
+        lastRight = right
+        lastStrafe = strafe
+        
+        // Calculate heading change
+        val headingDelta = (leftDelta - rightDelta) / TRACK_WIDTH
+        heading += headingDelta
+        
+        // Calculate local movement (robot-centric)
+        val forwardDelta = (leftDelta + rightDelta) / 2.0
+        val strafeDeltaAdjusted = strafeDelta - (CENTER_OFFSET * headingDelta)
+        
+        // Convert to global coordinates (field-centric)
+        val avgHeading = heading - (headingDelta / 2.0)
+        x += forwardDelta * cos(avgHeading) - strafeDeltaAdjusted * sin(avgHeading)
+        y += forwardDelta * sin(avgHeading) + strafeDeltaAdjusted * cos(avgHeading)
+    }
+    
+    fun getHeadingDegrees() = Math.toDegrees(heading)
+}
+```
+</Tab>
+</Tabs>
+
+**Pros:**
+- No wheel slip interference (free-spinning wheels)
+- Tracks strafe movement (mecanum/X-drive)
+- Much more accurate than drive encoders
+- Industry-standard for competitive teams
+
+**Cons:**
+- Requires extra hardware (wheels, encoders, mounts)
+- More complex to build and calibrate
+- Takes up precious encoder ports
+
+<Callout type="tip">
+**Recommended Setup:** Use omniwheels (35mm or 48mm diameter) for dead wheels. They have low friction and won't interfere with robot movement!
+</Callout>
+
+### 3. IMU-Assisted Odometry
+
+Combines wheel encoders with an **IMU (Inertial Measurement Unit)** for better heading accuracy.
+
+**Why Use IMU?**
+- Wheel-based heading drifts over time
+- IMU provides absolute heading reading
+- Combining both gives best results
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+public class IMUOdometry {
+    private DcMotor leftEncoder, rightEncoder, strafeEncoder;
+    private IMU imu;
+    
+    private double x = 0, y = 0;
+    private int lastLeft = 0, lastRight = 0, lastStrafe = 0;
+    
+    private static final double COUNTS_PER_INCH = 8192.0 / (35.0 * Math.PI);
+    
+    public void update() {
+        // Get heading from IMU (more accurate than wheel-based)
+        double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        
+        // Read encoder positions
+        int left = leftEncoder.getCurrentPosition();
+        int right = rightEncoder.getCurrentPosition();
+        int strafe = strafeEncoder.getCurrentPosition();
+        
+        // Calculate deltas
+        double leftDelta = (left - lastLeft) / COUNTS_PER_INCH;
+        double rightDelta = (right - lastRight) / COUNTS_PER_INCH;
+        double strafeDelta = (strafe - lastStrafe) / COUNTS_PER_INCH;
+        
+        // Update last positions
+        lastLeft = left;
+        lastRight = right;
+        lastStrafe = strafe;
+        
+        // Calculate local movement
+        double forwardDelta = (leftDelta + rightDelta) / 2.0;
+        
+        // Convert to global coordinates using IMU heading
+        x += forwardDelta * Math.cos(heading) - strafeDelta * Math.sin(heading);
+        y += forwardDelta * Math.sin(heading) + strafeDelta * Math.cos(heading);
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+class IMUOdometry(
+    private val leftEncoder: DcMotor,
+    private val rightEncoder: DcMotor,
+    private val strafeEncoder: DcMotor,
+    private val imu: IMU
+) {
+    var x = 0.0
+        private set
+    var y = 0.0
+        private set
+    
+    private var lastLeft = 0
+    private var lastRight = 0
+    private var lastStrafe = 0
+    
+    companion object {
+        const val COUNTS_PER_INCH = 8192.0 / (35.0 * PI)
+    }
+    
+    fun update() {
+        // Get heading from IMU (more accurate than wheel-based)
+        val heading = imu.robotYawPitchRollAngles.getYaw(AngleUnit.RADIANS)
+        
+        // Read encoder positions
+        val left = leftEncoder.currentPosition
+        val right = rightEncoder.currentPosition
+        val strafe = strafeEncoder.currentPosition
+        
+        // Calculate deltas
+        val leftDelta = (left - lastLeft) / COUNTS_PER_INCH
+        val rightDelta = (right - lastRight) / COUNTS_PER_INCH
+        val strafeDelta = (strafe - lastStrafe) / COUNTS_PER_INCH
+        
+        // Update last positions
+        lastLeft = left
+        lastRight = right
+        lastStrafe = strafe
+        
+        // Calculate local movement
+        val forwardDelta = (leftDelta + rightDelta) / 2.0
+        
+        // Convert to global coordinates using IMU heading
+        x += forwardDelta * cos(heading) - strafeDelta * sin(heading)
+        y += forwardDelta * sin(heading) + strafeDelta * cos(heading)
+    }
+}
+```
+</Tab>
+</Tabs>
+
+**Pros:**
+- Accurate heading even with wheel slip
+- No heading drift accumulation
+- Great for long autonomous routines
+
+**Cons:**
+- IMU drift can still occur (slowly)
+- Magnetic interference affects IMU readings
+- Requires IMU calibration
+
+## Tuning Odometry
+
+To get accurate odometry, you must **calibrate** these values:
+
+### 1. Wheel Diameter
+
+Measure the actual diameter of your tracking wheels. Manufacturing tolerances mean printed values aren't always exact.
+
+### 2. Counts Per Inch
+
+Use the formula:
+```
+COUNTS_PER_INCH = ENCODER_TICKS_PER_REV / (WHEEL_DIAMETER * π)
+```
+
+For REV Through Bore Encoder (8192 ticks/rev) with 35mm omniwheel:
+```
+COUNTS_PER_INCH = 8192 / (35mm * π) ≈ 74.6 ticks/mm ≈ 1894 ticks/inch
+```
+
+### 3. Track Width
+
+**Track width** is the distance between the parallel odometry wheels.
+
+To calibrate:
+1. Turn robot in place exactly 10 full rotations
+2. Note encoder readings
+3. Calculate: `TRACK_WIDTH = (encoder_diff / 10) / (2 * π)`
+
+### 4. Strafe Coefficient
+
+Strafe wheels sometimes have different effective diameters due to scrubbing. Test strafing left/right and adjust accordingly.
+
+## Using Odometry in Autonomous
+
+Once odometry is running, you can navigate to specific coordinates:
+
+<Tabs items={['Java', 'Kotlin']}>
+<Tab value="Java">
+```java
+public void goToPoint(double targetX, double targetY) {
+    while (opModeIsActive()) {
+        odometry.update(); // Update position
+        
+        // Calculate error
+        double errorX = targetX - odometry.getX();
+        double errorY = targetY - odometry.getY();
+        double distance = Math.hypot(errorX, errorY);
+        
+        if (distance < 2.0) break; // Within 2 inches
+        
+        // Calculate angle to target
+        double angleToTarget = Math.atan2(errorY, errorX);
+        double headingError = angleToTarget - odometry.getHeading();
+        
+        // Simple proportional control
+        double forward = Math.cos(headingError) * distance * 0.05;
+        double strafe = Math.sin(headingError) * distance * 0.05;
+        double turn = headingError * 0.3;
+        
+        // Apply to drivetrain (mecanum example)
+        drivetrain.drive(forward, strafe, turn);
+    }
+}
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+fun goToPoint(targetX: Double, targetY: Double) {
+    while (opModeIsActive()) {
+        odometry.update() // Update position
+        
+        // Calculate error
+        val errorX = targetX - odometry.x
+        val errorY = targetY - odometry.y
+        val distance = hypot(errorX, errorY)
+        
+        if (distance < 2.0) return // Within 2 inches
+        
+        // Calculate angle to target
+        val angleToTarget = atan2(errorY, errorX)
+        val headingError = angleToTarget - odometry.heading
+        
+        // Simple proportional control
+        val forward = cos(headingError) * distance * 0.05
+        val strafe = sin(headingError) * distance * 0.05
+        val turn = headingError * 0.3
+        
+        // Apply to drivetrain (mecanum example)
+        drivetrain.drive(forward, strafe, turn)
+    }
+}
+```
+</Tab>
+</Tabs>
+
+## Common Mistakes
+
+**Not calling `update()` every loop** — Position won't track properly  
+**Using drive motors on mecanum without strafe tracking** — X/Y position will be wrong  
+**Forgetting to calibrate constants** — Odometry will drift massively  
+**Not resetting encoders at start** — Initial position will be wrong  
+**Mounting wheels incorrectly** — Wheels must spin freely and touch ground consistently
+
+## Comparison Table
+
+| Type | Accuracy | Setup Difficulty | Hardware Cost | Best For |
+|------|----------|------------------|---------------|----------|
+| **Drive Encoders (2-Wheel)** | ⭐⭐ | Easy | Free | Tank drive, beginners |
+| **Three Dead Wheels** | ⭐⭐⭐⭐⭐ | Hard | $50-280 | Competitive teams, mecanum |
+| **IMU-Assisted** | ⭐⭐⭐⭐ | Moderate | Included (Control Hub) | Long autonomous, precision |
+
+## Next Steps
+
+Now that you understand odometry, learn how to use it for advanced navigation:
+- **[Motion Planning](/docs/autonomous/motion-planning)** — Choose the best path to your target
+- **[Pure Pursuit](/docs/autonomous/pure-pursuit)** — Follow smooth curved paths with odometry
+- **[Sensor Fusion](/docs/autonomous/sensor-fusion)** — Combine odometry with vision for even better accuracy
+
+## Additional Resources
+
+- [gm0: Odometry](https://gm0.org/en/latest/docs/software/concepts/odometry.html)
+- [Road Runner Quickstart (includes tuning guide)](https://github.com/acmerobotics/road-runner-quickstart)
+- [FTC Discord: Odometry Help](https://discord.gg/first-tech-challenge)

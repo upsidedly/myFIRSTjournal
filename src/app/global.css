@@ -162,3 +162,90 @@
     transform: translateY(-5px);
   }
 }
+
+@keyframes card-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(-1.5deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+  75% {
+    transform: translateY(8px) rotate(-0.75deg);
+  }
+}
+
+@keyframes drift-slow {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate3d(14px, -18px, 0) rotate(1.5deg);
+  }
+  66% {
+    transform: translate3d(-10px, 12px, 0) rotate(-1deg);
+  }
+}
+
+@keyframes drift-gentle {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+}
+
+@keyframes code-scroll {
+  0% {
+    transform: translateY(-12%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(12%);
+    opacity: 0;
+  }
+}
+
+@utility animate-card-float {
+  animation: card-float 7s ease-in-out infinite;
+}
+
+@utility animate-drift-slow {
+  animation: drift-slow 14s ease-in-out infinite;
+}
+
+@utility animate-drift-gentle {
+  animation: drift-gentle 8s ease-in-out infinite;
+}
+
+@utility animate-code-scroll {
+  animation: code-scroll 12s linear infinite;
+}
+.wave-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+    transform: rotate(180deg);
+}
+.wave-bottom svg {
+    position: relative;
+    display: block;
+    width: calc(154% + 1.3px);
+    height: 120px;
+}
+.wave-bottom .shape-fill {
+  fill: currentColor;
+}
